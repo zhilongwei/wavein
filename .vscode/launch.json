@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug WaveIn",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/dev/wavein",
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "Build dev"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+---
+Checks: >-
+  -*,
+  bugprone-*,
+  performance-*,
+  modernize-*,
+  readability-braces-around-statements,
+  readability-implicit-bool-conversion,
+  readability-misleading-indentation,
+  readability-redundant-control-flow,
+  readability-redundant-declaration,
+  readability-redundant-member-init,
+  readability-simplify-boolean-expr,
+  readability-static-accessed-through-instance,
+  -bugprone-chained-comparison,
+  -modernize-avoid-c-arrays,
+  -modernize-use-trailing-return-type
+WarningsAsErrors: ''
+HeaderFilterRegex: '(.*/)?(include|src|tests)/.*'
+CheckOptions:
+  - key: readability-braces-around-statements.ShortStatementLines
+    value: '0'
+FormatStyle: file

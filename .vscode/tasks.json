@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Configure dev",
+      "type": "shell",
+      "command": "cmake --preset dev",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build dev",
+      "type": "shell",
+      "command": "cmake --build --preset dev",
+      "dependsOn": "Configure dev",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Test dev",
+      "type": "shell",
+      "command": "ctest --preset dev",
+      "dependsOn": "Build dev",
+      "problemMatcher": []
+    },
+    {
+      "label": "Format",
+      "type": "shell",
+      "command": "cmake --build --preset dev --target format",
+      "dependsOn": "Configure dev",
+      "problemMatcher": []
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "name": "WaveIn PETSc development",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "..",
+    "options": ["--platform=linux/amd64"]
+  },
+  "remoteUser": "ubuntu",
+  "updateRemoteUserUID": true,
+  "runArgs": [
+    "--init",
+    "--platform=linux/amd64",
+    "--cap-add=SYS_PTRACE",
+    "--security-opt=seccomp=unconfined"
+  ],
+  "containerEnv": {
+    "CC": "gcc",
+    "CXX": "g++"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "llvm-vs-code-extensions.vscode-clangd",
+        "ms-vscode.cmake-tools",
+        "vadimcn.vscode-lldb"
+      ]
+    }
+  }
+}
