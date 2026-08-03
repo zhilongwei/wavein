@@ -30,46 +30,10 @@ if(WAVEIN_ENABLE_CLANG_TIDY)
     set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXECUTABLE}")
 endif()
 
-add_library(wavein_core
-            src/petsc_info.cc
-            src/airy_wave.cc
-            src/jonswap.cc
-)
-target_include_directories(
-    wavein_core
-    PUBLIC
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-)
-target_compile_features(wavein_core PUBLIC cxx_std_17)
-target_compile_options(wavein_core PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(wavein_core PUBLIC PkgConfig::PETSC MPI::MPI_CXX)
-
-add_executable(wavein src/apps/main.cc)
-target_link_libraries(wavein PRIVATE wavein_core)
-
-add_custom_target(
-    run-wavein
-    COMMAND "$<TARGET_FILE:wavein>"
-    DEPENDS wavein
-    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
-    USES_TERMINAL
-    COMMENT "Running the WaveIn application"
-    VERBATIM
-)
+add_subdirectory(src)
 
 if(BUILD_TESTING)
-    find_package(Catch2 3 CONFIG REQUIRED)
-    list(APPEND CMAKE_MODULE_PATH "${Catch2_DIR}")
-    include(Catch)
-
-    add_executable(
-        wavein_tests
-        tests/petsc_info_test.cc
-        tests/airy_wave_test.cc
-        tests/wave_spectrum_test.cc
-    )
-    target_link_libraries(wavein_tests PRIVATE wavein_core Catch2::Catch2)
-    catch_discover_tests(wavein_tests)
+    add_subdirectory(tests)
 endif()
 
 find_program(CLANG_FORMAT_EXECUTABLE NAMES clang-format)

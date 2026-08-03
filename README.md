@@ -38,7 +38,7 @@ Inside the container, the usual commands are:
 cmake --preset dev
 cmake --build --preset dev
 ctest --preset dev
-./build/dev/wavein
+./build/dev/src/apps/wavein
 ```
 
 The shared presets do not hardcode a compiler. Inside the dev container, `CXX=g++`
@@ -134,5 +134,5 @@ Use a new binary directory whenever the compiler, MPI implementation, or PETSc
 installation changes. CMake caches all three as part of the configured toolchain.
 
 Submit the executable through the cluster scheduler, for example
-`srun -n 4 ./build/hpc-release/wavein`, rather than running a parallel job on a
+`srun -n 4 ./build/hpc-release/src/apps/wavein`, rather than running a parallel job on a
 login node.

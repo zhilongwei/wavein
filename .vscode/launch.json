@@ -5,7 +5,7 @@
       "name": "Debug WaveIn",
       "type": "lldb",
       "request": "launch",
-      "program": "${workspaceFolder}/build/dev/wavein",
+      "program": "${workspaceFolder}/build/dev/src/apps/wavein",
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "Build dev"
     }
