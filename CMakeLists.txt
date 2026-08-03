@@ -62,7 +62,12 @@ if(BUILD_TESTING)
     list(APPEND CMAKE_MODULE_PATH "${Catch2_DIR}")
     include(Catch)
 
-    add_executable(wavein_tests tests/petsc_info_test.cc tests/airy_wave_test.cc)
+    add_executable(
+        wavein_tests
+        tests/petsc_info_test.cc
+        tests/airy_wave_test.cc
+        tests/wave_spectrum_test.cc
+    )
     target_link_libraries(wavein_tests PRIVATE wavein_core Catch2::Catch2)
     catch_discover_tests(wavein_tests)
 endif()
