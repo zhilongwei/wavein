@@ -5,6 +5,7 @@ ARG USERNAME=ubuntu
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        openssh-client \
         catch2 \
         clang \
         clang-format \
