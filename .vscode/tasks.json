@@ -12,7 +12,7 @@
       "type": "shell",
       "command": "cmake --build --preset dev",
       "dependsOn": "Configure dev",
-      "problemMatcher": ["$gcc"]
+      "problemMatcher": []
     },
     {
       "label": "Test dev",

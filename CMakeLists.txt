@@ -21,6 +21,7 @@ endif()
 
 find_package(PkgConfig REQUIRED)
 pkg_search_module(PETSC REQUIRED IMPORTED_TARGET PETSc petsc)
+find_package(MPI REQUIRED COMPONENTS CXX)
 
 option(WAVEIN_ENABLE_CLANG_TIDY "Run clang-tidy while compiling" OFF)
 
@@ -29,7 +30,10 @@ if(WAVEIN_ENABLE_CLANG_TIDY)
     set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXECUTABLE}")
 endif()
 
-add_library(wavein_core src/petsc_info.cc)
+add_library(wavein_core
+            src/petsc_info.cc
+            src/airy_wave.cc
+)
 target_include_directories(
     wavein_core
     PUBLIC
@@ -37,7 +41,7 @@ target_include_directories(
 )
 target_compile_features(wavein_core PUBLIC cxx_std_17)
 target_compile_options(wavein_core PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(wavein_core PUBLIC PkgConfig::PETSC)
+target_link_libraries(wavein_core PUBLIC PkgConfig::PETSC MPI::MPI_CXX)
 
 add_executable(wavein src/apps/main.cc)
 target_link_libraries(wavein PRIVATE wavein_core)
@@ -57,7 +61,7 @@ if(BUILD_TESTING)
     list(APPEND CMAKE_MODULE_PATH "${Catch2_DIR}")
     include(Catch)
 
-    add_executable(wavein_tests tests/petsc_info_test.cc)
+    add_executable(wavein_tests tests/petsc_info_test.cc tests/airy_wave_test.cc)
     target_link_libraries(wavein_tests PRIVATE wavein_core Catch2::Catch2)
     catch_discover_tests(wavein_tests)
 endif()
