@@ -33,6 +33,7 @@ endif()
 add_library(wavein_core
             src/petsc_info.cc
             src/airy_wave.cc
+            src/jonswap.cc
 )
 target_include_directories(
     wavein_core
