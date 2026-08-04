@@ -3,6 +3,7 @@ add_library(
     petsc_info.cc
     airy_wave.cc
     jonswap.cc
+    irregular_waves.cc
 )
 
 target_include_directories(
