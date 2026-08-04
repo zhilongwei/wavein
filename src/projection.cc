@@ -301,20 +301,14 @@ Projection::Projection(MPI_Comm comm, DM dm, PetscReal dx, PetscReal dz, PetscRe
                         row.c = 0;
 
                         col[0].i = ex;
-                        col[0].j = ey - 1;
+                        col[0].j = ey;
                         col[0].loc = DMSTAG_ELEMENT;
                         col[0].c = 0;
-                        val[0] = -1.0 / dz_;
-
-                        col[1].i = ex;
-                        col[1].j = ey;
-                        col[1].loc = DMSTAG_ELEMENT;
-                        col[1].c = 0;
-                        val[1] = 1.0 / dz_;
+                        val[0] = -2.0 / dz_;
 
                         PetscCallAbort(comm_,
                                        DMStagMatSetValuesStencil(dm_, mat_grad_pressure_, 1, &row,
-                                                                 2, col, val, INSERT_VALUES));
+                                                                 1, col, val, INSERT_VALUES));
                     }
                 }
             }
