@@ -1,7 +1,7 @@
 #include <petscsys.h>
 
-#include "constants.h"
 #include "wavein/airy_wave.h"
+#include "wavein/constants.h"
 
 namespace wavein
 {
