@@ -4,6 +4,7 @@ add_library(
     airy_wave.cc
     jonswap.cc
     irregular_waves.cc
+    wavemaker.cc
 )
 
 target_include_directories(
