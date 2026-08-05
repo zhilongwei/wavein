@@ -1,7 +1,10 @@
 #include "wavein/jonswap.h"
 #include "wavein/pierson_moskowitz.h"
 
-[[nodiscard]] PetscReal wavein::Jonswap::spectrum(PetscReal omega) const
+namespace wavein
+{
+
+[[nodiscard]] PetscReal Jonswap::spectrum(PetscReal omega) const
 {
     const PetscReal omegap = 2.0 * PETSC_PI / Tp_;
     const PetscReal sigma = omega > omegap ? sigma_b_ : sigma_a_;
@@ -12,3 +15,5 @@
 
     return A * pm.spectrum(omega) * PetscPowReal(gamma_, PetscExpReal(-0.5 * beta * beta));
 }
+
+} // namespace wavein

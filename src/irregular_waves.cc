@@ -1,9 +1,12 @@
 #include "wavein/irregular_waves.h"
 #include "wavein/airy_wave.h"
 
-PetscErrorCode wavein::IrregularWaves::velocity_spectra(Vec omegas, PetscReal z,
-                                                        Vec horizontal_velocity_spectrum,
-                                                        Vec vertical_velocity_spectrum) const
+namespace wavein
+{
+
+PetscErrorCode IrregularWaves::velocity_spectra(Vec omegas, PetscReal z,
+                                                Vec horizontal_velocity_spectrum,
+                                                Vec vertical_velocity_spectrum) const
 {
     PetscFunctionBeginUser;
 
@@ -33,3 +36,5 @@ PetscErrorCode wavein::IrregularWaves::velocity_spectra(Vec omegas, PetscReal z,
 
     PetscFunctionReturn(PETSC_SUCCESS);
 }
+
+} // namespace wavein

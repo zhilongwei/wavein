@@ -1,8 +1,11 @@
 #include "wavein/wavemaker.h"
 
+namespace wavein
+{
+
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
-wavein::Wavemaker::Wavemaker(MPI_Comm comm, DM dm, PetscReal wavelength, PetscReal xmin,
-                             PetscReal xmax, PetscReal nin, PetscReal nout, PetscReal gamma)
+Wavemaker::Wavemaker(MPI_Comm comm, DM dm, PetscReal wavelength, PetscReal xmin, PetscReal xmax,
+                     PetscReal nin, PetscReal nout, PetscReal gamma)
     : comm_(comm)
 {
     PetscFunctionBeginUser;
@@ -68,7 +71,7 @@ wavein::Wavemaker::Wavemaker(MPI_Comm comm, DM dm, PetscReal wavelength, PetscRe
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
-wavein::Wavemaker::~Wavemaker() noexcept
+Wavemaker::~Wavemaker() noexcept
 {
     PetscFunctionBeginUser;
 
@@ -79,8 +82,8 @@ wavein::Wavemaker::~Wavemaker() noexcept
     PetscFunctionReturnVoid();
 }
 
-PetscErrorCode wavein::Wavemaker::force(Vec ref_vel, Vec ref_eta, PetscReal dt, PetscReal factor,
-                                        Vec vel, Vec eta) noexcept
+PetscErrorCode Wavemaker::force(Vec ref_vel, Vec ref_eta, PetscReal dt, PetscReal factor, Vec vel,
+                                Vec eta) noexcept
 {
     PetscFunctionBeginUser;
 
@@ -95,3 +98,5 @@ PetscErrorCode wavein::Wavemaker::force(Vec ref_vel, Vec ref_eta, PetscReal dt, 
 
     PetscFunctionReturn(PETSC_SUCCESS);
 }
+
+} // namespace wavein
