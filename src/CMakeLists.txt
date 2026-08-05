@@ -6,6 +6,7 @@ add_library(
     irregular_waves.cc
     wavemaker.cc
     projection.cc
+    regular_wave_tank.cc
 )
 
 target_include_directories(
