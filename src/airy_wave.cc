@@ -7,8 +7,8 @@ namespace wavein
 {
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-AiryWave::AiryWave(MPI_Comm comm, PetscReal h, PetscReal T, PetscReal atol)
-    : h_(h), T_(T), atol_(atol), omega_(2.0 * PETSC_PI / T),
+AiryWave::AiryWave(MPI_Comm comm, PetscReal h, PetscReal T, PetscReal H, PetscReal atol)
+    : h_(h), T_(T), H_(H), atol_(atol), omega_(2.0 * PETSC_PI / T),
       kh_(nondimensional_dispersion_relation(comm, omega_ * PetscSqrtReal(h_ / kGA))), k_(kh_ / h_),
       L_(2.0 * PETSC_PI / k_)
 {

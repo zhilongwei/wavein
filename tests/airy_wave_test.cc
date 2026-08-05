@@ -32,7 +32,7 @@ const PetscReal expected_celerity = expected_omega / expected_k;
 
 TEST_CASE("Linear wave properties satisfy the dispersion relation", "[airy]")
 {
-    const wavein::AiryWave wave(PETSC_COMM_WORLD, expected_h, expected_wave_period,
+    const wavein::AiryWave wave(PETSC_COMM_WORLD, expected_h, expected_wave_period, 2.0,
                                 solver_tolerance);
 
     REQUIRE(wave.water_depth() == Catch::Approx(expected_h).epsilon(comparison_tolerance));
@@ -52,7 +52,7 @@ TEST_CASE("Linear wave properties satisfy the dispersion relation", "[airy]")
 
 TEST_CASE("Linear wave velocities are incompressible and irrotational", "[airy]")
 {
-    const wavein::AiryWave wave(PETSC_COMM_WORLD, velocity_test_h, velocity_test_T,
+    const wavein::AiryWave wave(PETSC_COMM_WORLD, velocity_test_h, velocity_test_T, 2.0,
                                 solver_tolerance);
 
     for (PetscInt index = 0; index < depth_sample_count; ++index)
