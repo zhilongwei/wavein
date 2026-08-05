@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.25)
 project(WaveIn VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(CTest)
 
@@ -84,13 +85,20 @@ endif()
 
 find_program(RUN_CLANG_TIDY_EXECUTABLE NAMES run-clang-tidy run-clang-tidy-18)
 if(RUN_CLANG_TIDY_EXECUTABLE)
-    add_custom_target(
-        tidy
-        COMMAND "${RUN_CLANG_TIDY_EXECUTABLE}" -quiet -p "${CMAKE_BINARY_DIR}"
-        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-        COMMENT "Running clang-tidy over the compilation database"
-        VERBATIM
-    )
+    if("${CMAKE_GENERATOR}" MATCHES "Ninja|Makefiles")
+        add_custom_target(
+            tidy
+            COMMAND "${RUN_CLANG_TIDY_EXECUTABLE}" -quiet -p "${CMAKE_BINARY_DIR}"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            COMMENT "Running clang-tidy over the compilation database"
+            VERBATIM
+        )
+    else()
+        message(
+            STATUS
+            "tidy target is unavailable because the selected generator does not produce compile_commands.json"
+        )
+    endif()
 else()
     message(STATUS "run-clang-tidy not found; tidy target is unavailable")
 endif()
