@@ -9,11 +9,13 @@ Projection::Projection(MPI_Comm comm, DM dm, PetscReal dx, PetscReal dz, PetscRe
 {
     PetscFunctionBeginUser;
 
-    DMBoundaryType xboundary;
-    PetscCallAbort(comm_, DMStagGetBoundaryTypes(dm_, &xboundary, nullptr, nullptr));
+    DMBoundaryType xboundary, yboundary;
+    PetscCallAbort(comm_, DMStagGetBoundaryTypes(dm_, &xboundary, &yboundary, nullptr));
     PetscCheckAbort(xboundary == DM_BOUNDARY_PERIODIC || xboundary == DM_BOUNDARY_NONE, comm_,
                     PETSC_ERR_ARG_WRONG,
                     "DMStag must have none or periodic boundary conditions in the x-direction");
+    PetscCheckAbort(yboundary == DM_BOUNDARY_NONE, comm_, PETSC_ERR_ARG_WRONG,
+                    "DMStag must have none boundary conditions in the z-direction");
 
     // Create pressure grid
     PetscCallAbort(comm_, DMStagCreateCompatibleDMStag(dm_, 0, 0, 1, 0, &dm_pressure_));
@@ -25,6 +27,7 @@ Projection::Projection(MPI_Comm comm, DM dm, PetscReal dx, PetscReal dz, PetscRe
     PetscCallAbort(comm_, DMCreateMatrix(dm_, &mat_d2p_dz2_top_Dirichlet_bc_));
     PetscCallAbort(comm_, DMCreateMatrix(dm_, &mat_dp_dz_top_Dirichlet_bc_));
     PetscCallAbort(comm_, DMCreateMatrix(dm_, &mat_migrate_top_p_up2element_));
+    PetscCallAbort(comm_, DMCreateGlobalVector(dm_, &dvel_));
 
     const PetscReal x_scale = 1.0 / dx_ / dx_;
     const PetscReal z_scale = 1.0 / dz_ / dz_;
@@ -638,7 +641,7 @@ Projection::Projection(MPI_Comm comm, DM dm, PetscReal dx, PetscReal dz, PetscRe
 }
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-PetscErrorCode Projection::project(Vec dvel, Vec sol, Vec ptop, PetscReal dt) noexcept
+PetscErrorCode Projection::project(Vec sol, Vec ptop, PetscReal dt) noexcept
 {
     PetscFunctionBeginUser;
 
@@ -660,14 +663,14 @@ PetscErrorCode Projection::project(Vec dvel, Vec sol, Vec ptop, PetscReal dt) no
     PetscCall(DMStagMigrateVec(dm_pressure_, sol_pressure_grid_, dm_, rhs_));
 
     // dvel now stores the pressure gradient
-    PetscCall(MatMult(mat_grad_pressure_, rhs_, dvel));
+    PetscCall(MatMult(mat_grad_pressure_, rhs_, dvel_));
 
     // dp/dz at the top boundary
     PetscCall(MatMult(mat_dp_dz_top_Dirichlet_bc_, pressure_top_row_element_, rhs_));
-    PetscCall(MatMultTransposeAdd(mat_migrate_top_p_up2element_, rhs_, dvel, dvel));
+    PetscCall(MatMultTransposeAdd(mat_migrate_top_p_up2element_, rhs_, dvel_, dvel_));
 
     // Change of velocity due to pressure gradient
-    PetscCall(VecScale(dvel, -dt / rhow_));
+    PetscCall(VecAXPY(sol, -dt / rhow_, dvel_));
 
     PetscFunctionReturn(PETSC_SUCCESS);
 }

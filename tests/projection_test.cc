@@ -47,12 +47,10 @@ ProjectionResult project_random_velocity(DMBoundaryType x_boundary)
     {
         wavein::Projection projection(comm, dm, dx, dz);
 
-        Vec dvel = nullptr;
         Vec sol = nullptr;
         Vec ptop = nullptr;
         PetscRandom random = nullptr;
 
-        PetscCallAbort(comm, DMCreateGlobalVector(dm, &dvel));
         PetscCallAbort(comm, DMCreateGlobalVector(dm, &sol));
         PetscCallAbort(comm, DMCreateGlobalVector(dm, &ptop));
 
@@ -66,12 +64,10 @@ ProjectionResult project_random_velocity(DMBoundaryType x_boundary)
         PetscCallAbort(comm, projection.divergence_norm(sol, &initial_divergence_norm));
         PetscCallAbort(comm, VecNorm(ptop, NORM_2, &top_pressure_norm));
 
-        PetscCallAbort(comm, projection.project(dvel, sol, ptop, dt));
-        PetscCallAbort(comm, VecAXPY(sol, 1.0, dvel));
+        PetscCallAbort(comm, projection.project(sol, ptop, dt));
         PetscCallAbort(comm, projection.divergence_norm(sol, &projected_divergence_norm));
 
         PetscCallAbort(comm, PetscRandomDestroy(&random));
-        PetscCallAbort(comm, VecDestroy(&dvel));
         PetscCallAbort(comm, VecDestroy(&sol));
         PetscCallAbort(comm, VecDestroy(&ptop));
     }

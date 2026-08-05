@@ -24,7 +24,7 @@ class Projection
             destroy();
         }
 
-        PetscErrorCode project(Vec dvel, Vec sol, Vec ptop, PetscReal dt) noexcept;
+        PetscErrorCode project(Vec sol, Vec ptop, PetscReal dt) noexcept;
 
         PetscErrorCode divergence(Vec sol, Vec div) const noexcept;
         PetscErrorCode divergence_norm(Vec sol, PetscReal *norm) noexcept;
@@ -44,6 +44,7 @@ class Projection
             PetscCallAbort(comm_, VecDestroy(&pressure_top_row_element_));
             PetscCallAbort(comm_, VecDestroy(&rhs_pressure_grid_));
             PetscCallAbort(comm_, VecDestroy(&sol_pressure_grid_));
+            PetscCallAbort(comm_, VecDestroy(&dvel_));
         }
         MPI_Comm comm_ = MPI_COMM_NULL;
         DM dm_ = nullptr;
@@ -65,6 +66,7 @@ class Projection
         Vec pressure_top_row_element_ = nullptr;
         Vec rhs_pressure_grid_ = nullptr;
         Vec sol_pressure_grid_ = nullptr;
+        Vec dvel_ = nullptr;
 };
 
 } // namespace wavein
