@@ -6,7 +6,7 @@ namespace wavein
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
 Wavemaker::Wavemaker(MPI_Comm comm, DM dm, PetscReal wavelength, PetscReal xmin, PetscReal xmax,
                      PetscReal nin, PetscReal nout, PetscReal gamma)
-    : comm_(comm)
+    : comm_(comm), geometry_{xmin, xmax, nin * wavelength, nout * wavelength}
 {
     PetscFunctionBeginUser;
 

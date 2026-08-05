@@ -6,6 +6,20 @@
 namespace wavein
 {
 
+struct ForcingZoneGeometry
+{
+        PetscReal xmin;
+        PetscReal xmax;
+        PetscReal inlet_length;
+        PetscReal outlet_length;
+
+        [[nodiscard]] PetscBool is_in_forcing_zone(PetscReal x) const noexcept
+        {
+            return (x >= xmin && x <= xmin + inlet_length) ||
+                   (x >= xmax - outlet_length && x <= xmax);
+        }
+};
+
 class Wavemaker
 {
     public:
@@ -18,6 +32,11 @@ class Wavemaker
         Wavemaker &operator=(const Wavemaker &) = delete;
         ~Wavemaker() noexcept;
 
+        [[nodiscard]] ForcingZoneGeometry forcing_zone_geometry() const noexcept
+        {
+            return geometry_;
+        }
+
         PetscErrorCode force(Vec ref_vel, Vec ref_eta, PetscReal dt, PetscReal factor, Vec vel,
                              Vec eta) noexcept;
 
@@ -27,6 +46,7 @@ class Wavemaker
             return (PetscExpReal(x * x) - 1.0) / (PetscExpReal(1.0) - 1.0);
         }
         MPI_Comm comm_ = MPI_COMM_NULL;
+        ForcingZoneGeometry geometry_;
         Vec blender_ = nullptr;
         Vec delta_vel_ = nullptr;
         Vec delta_eta_ = nullptr;
