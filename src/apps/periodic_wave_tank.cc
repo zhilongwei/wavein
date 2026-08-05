@@ -272,3 +272,27 @@ int main(int argc, char **argv)
 
     return static_cast<int>(run_error != PETSC_SUCCESS ? run_error : finalize_error);
 }
+
+// Example usages (run from the repository root after building the release preset):
+//
+// Define the executable path:
+//   app=./build/release/src/apps/periodic_wave_tank
+//
+// Show the available PETSc options:
+//   "${app}" -help
+//
+// Run one wave period on a single MPI rank:
+//   "${app}" -H 1.0 -T 5.0 -h 10.0 -dt 0.005 -nx 128 -nz 128
+//
+// Run the same case on four MPI ranks:
+//   mpiexec -n 4 "${app}" -H 1.0 -T 5.0 -h 10.0 -dt 0.005 -nx 128 -nz 128
+//
+// Refine the x resolution while holding nz fixed:
+//   for nx in 16 32 64 128 256 512; do
+//       "${app}" -H 1.0 -T 5.0 -h 10.0 -dt 0.005 -nx "${nx}" -nz 512
+//   done
+//
+// Refine the z resolution while holding nx fixed:
+//   for nz in 16 32 64 128 256 512; do
+//       "${app}" -H 1.0 -T 5.0 -h 10.0 -dt 0.005 -nx 512 -nz "${nz}"
+//   done
