@@ -1,4 +1,4 @@
-FROM ghcr.io/zhilongwei/wavein-petsc:3.25.4-r1-debug
+FROM ghcr.io/zhilongwei/wavein-petsc:3.25.4-r2-debug
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG USERNAME=ubuntu

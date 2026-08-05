@@ -42,7 +42,6 @@ ProjectionResult project_random_velocity(DMBoundaryType x_boundary)
     PetscReal projected_divergence_norm = 0.0;
     PetscReal top_pressure_norm = 0.0;
 
-    PetscCallAbort(comm, PetscOptionsSetValue(nullptr, "-pc_type", PCJACOBI));
     PetscCallAbort(comm, PetscOptionsSetValue(nullptr, "-ksp_rtol", "1.0e-12"));
 
     {
@@ -77,7 +76,6 @@ ProjectionResult project_random_velocity(DMBoundaryType x_boundary)
         PetscCallAbort(comm, VecDestroy(&ptop));
     }
 
-    PetscCallAbort(comm, PetscOptionsClearValue(nullptr, "-pc_type"));
     PetscCallAbort(comm, PetscOptionsClearValue(nullptr, "-ksp_rtol"));
     PetscCallAbort(comm, DMDestroy(&dm));
 
