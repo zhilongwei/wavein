@@ -9,9 +9,9 @@ if(BUILD_TESTING)
         NAME periodic_wave_tank_smoke
         COMMAND
             periodic_wave_tank
-            -H 1.0
-            -T 5.0
-            -h 10.0
+            -wave_height 1.0
+            -wave_period 5.0
+            -water_depth 10.0
             -dt 0.1
             -nx 8
             -nz 4

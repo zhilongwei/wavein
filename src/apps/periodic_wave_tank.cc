@@ -1,9 +1,11 @@
 #include "wavein/airy_wave.h"
+#include "wavein/dmstag_hdf5_writer.h"
 #include "wavein/projection.h"
 #include "wavein/regular_wave_tank.h"
 #include "wavein/wavemaker.h"
 
 #include <petscdmstag.h>
+#include <petscviewerhdf5.h>
 
 #include <limits>
 
@@ -20,6 +22,7 @@ struct WaveTankOptions
         PetscReal dt = 0.0;
         PetscInt Nx = 0;
         PetscInt Nz = 0;
+        char output[PETSC_MAX_PATH_LEN] = "output.h5";
 };
 
 PetscErrorCode read_wave_tank_options(WaveTankOptions *options, PetscBool *should_exit)
@@ -34,15 +37,20 @@ PetscErrorCode read_wave_tank_options(WaveTankOptions *options, PetscBool *shoul
     PetscBool Nz_set = PETSC_FALSE;
 
     PetscOptionsBegin(PETSC_COMM_WORLD, nullptr, "Periodic wave tank options", nullptr);
-    PetscCall(PetscOptionsReal("-H", "Wave height", nullptr, options->H, &options->H, &H_set));
-    PetscCall(PetscOptionsReal("-T", "Wave period", nullptr, options->T, &options->T, &T_set));
-    PetscCall(PetscOptionsReal("-h", "Water depth", nullptr, options->h, &options->h, &h_set));
+    PetscCall(
+        PetscOptionsReal("-wave_height", "Wave height", nullptr, options->H, &options->H, &H_set));
+    PetscCall(
+        PetscOptionsReal("-wave_period", "Wave period", nullptr, options->T, &options->T, &T_set));
+    PetscCall(
+        PetscOptionsReal("-water_depth", "Water depth", nullptr, options->h, &options->h, &h_set));
     PetscCall(
         PetscOptionsReal("-dt", "Time-step size", nullptr, options->dt, &options->dt, &dt_set));
     PetscCall(PetscOptionsInt("-nx", "Number of cells in the x-direction", nullptr, options->Nx,
                               &options->Nx, &Nx_set));
     PetscCall(PetscOptionsInt("-nz", "Number of cells in the z-direction", nullptr, options->Nz,
                               &options->Nz, &Nz_set));
+    PetscCall(PetscOptionsString("-output", "HDF5 output filename", nullptr, options->output,
+                                 options->output, sizeof(options->output), nullptr));
     PetscOptionsEnd();
 
     PetscCall(PetscOptionsHasHelp(nullptr, should_exit));
@@ -51,19 +59,22 @@ PetscErrorCode read_wave_tank_options(WaveTankOptions *options, PetscBool *shoul
         PetscFunctionReturn(PETSC_SUCCESS);
     }
 
-    PetscCheck(H_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "Missing required option -H");
-    PetscCheck(T_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "Missing required option -T");
-    PetscCheck(h_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "Missing required option -h");
+    PetscCheck(H_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
+               "Missing required option -wave_height");
+    PetscCheck(T_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
+               "Missing required option -wave_period");
+    PetscCheck(h_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
+               "Missing required option -water_depth");
     PetscCheck(dt_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "Missing required option -dt");
     PetscCheck(Nx_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "Missing required option -nx");
     PetscCheck(Nz_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "Missing required option -nz");
 
     PetscCheck(options->H > 0.0, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
-               "Wave height -H must be positive");
+               "Wave height -wave_height must be positive");
     PetscCheck(options->T > 0.0, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
-               "Wave period -T must be positive");
+               "Wave period -wave_period must be positive");
     PetscCheck(options->h > 0.0, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
-               "Water depth -h must be positive");
+               "Water depth -water_depth must be positive");
     PetscCheck(options->dt > 0.0, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
                "Time-step size -dt must be positive");
     PetscCheck(options->Nx >= 2, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
@@ -248,6 +259,18 @@ PetscErrorCode run()
     PetscCall(VecCopy(sol, initial_sol));
     PetscCall(VecCopy(eta, initial_eta));
 
+    // Create the viewer
+    PetscViewer hdf5viewer = nullptr;
+    PetscCall(PetscViewerHDF5Open(comm, options.output, FILE_MODE_WRITE, &hdf5viewer));
+    wavein::DMStagHDF5Writer hdf5_writer(comm, dm, hdf5viewer);
+
+    PetscCall(hdf5_writer.push_group());
+    PetscCall(hdf5_writer.write(wave));
+
+    // Write the initial conditions to the HDF5 file
+    PetscCall(hdf5_writer.write_solution(sol, tt, "velocities and pressure"));
+    PetscCall(hdf5_writer.write_surface_elevation(eta, tt, "surface elevation"));
+
     const PetscReal duration = options.T;
     const PetscReal requested_num_steps = PetscCeilReal(duration / options.dt);
     PetscCheck(requested_num_steps <= static_cast<PetscReal>(std::numeric_limits<PetscInt>::max()),
@@ -260,6 +283,12 @@ PetscErrorCode run()
         PetscCall(wave_tank.update(sol, eta, tt, dt, 1.0));
         tt += dt;
     }
+
+    // Write the final conditions to the HDF5 file
+    PetscCall(hdf5_writer.write_solution(sol, tt));
+    PetscCall(hdf5_writer.write_surface_elevation(eta, tt));
+
+    PetscCall(hdf5_writer.pop_group());
 
     // After the simulation, eta and velocities should recover the initial conditions
     Vec velocity_error = nullptr, surface_elevation_error = nullptr;
@@ -296,6 +325,7 @@ PetscErrorCode run()
     PetscCall(VecDestroy(&eta));
     PetscCall(VecDestroy(&velocity_mask));
     PetscCall(DMDestroy(&dm));
+    PetscCall(PetscViewerDestroy(&hdf5viewer));
 
     PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -325,17 +355,25 @@ int main(int argc, char **argv)
 //   "${app}" -help
 //
 // Run one wave period on a single MPI rank:
-//   "${app}" -H 1.0 -T 5.0 -h 10.0 -dt 0.005 -nx 128 -nz 128
+//   "${app}" -wave_height 1.0 -wave_period 5.0 -water_depth 10.0 \
+//       -dt 0.005 -nx 128 -nz 128 \
+//       -output output_single.h5
 //
 // Run the same case on four MPI ranks:
-//   mpiexec -n 4 "${app}" -H 1.0 -T 5.0 -h 10.0 -dt 0.005 -nx 128 -nz 128
+//   mpiexec -n 4 "${app}" -wave_height 1.0 -wave_period 5.0 -water_depth 10.0 \
+//       -dt 0.005 -nx 128 -nz 128 \
+//       -output output_mpi.h5
 //
 // Refine the x resolution while holding nz fixed:
 //   for nx in 16 32 64 128 256 512; do
-//       "${app}" -H 1.0 -T 5.0 -h 10.0 -dt 0.005 -nx "${nx}" -nz 512
+//       "${app}" -wave_height 1.0 -wave_period 5.0 -water_depth 10.0 \
+//           -dt 0.005 -nx "${nx}" -nz 512 \
+//           -output "output_nx_${nx}_nz_512.h5"
 //   done
 //
 // Refine the z resolution while holding nx fixed:
 //   for nz in 16 32 64 128 256 512; do
-//       "${app}" -H 1.0 -T 5.0 -h 10.0 -dt 0.005 -nx 512 -nz "${nz}"
+//       "${app}" -wave_height 1.0 -wave_period 5.0 -water_depth 10.0 \
+//           -dt 0.005 -nx 512 -nz "${nz}" \
+//           -output "output_nx_512_nz_${nz}.h5"
 //   done
