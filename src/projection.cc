@@ -9,6 +9,8 @@ Projection::Projection(MPI_Comm comm, DM dm, PetscReal dx, PetscReal dz, PetscRe
 {
     PetscFunctionBeginUser;
 
+    PetscCallAbort(comm_, PetscObjectReference(reinterpret_cast<PetscObject>(dm_)));
+
     DMBoundaryType xboundary, yboundary;
     PetscCallAbort(comm_, DMStagGetBoundaryTypes(dm_, &xboundary, &yboundary, nullptr));
     PetscCheckAbort(xboundary == DM_BOUNDARY_PERIODIC || xboundary == DM_BOUNDARY_NONE, comm_,
