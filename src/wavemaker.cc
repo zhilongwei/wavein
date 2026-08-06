@@ -93,8 +93,8 @@ PetscErrorCode Wavemaker::force(Vec ref_vel, Vec ref_eta, PetscReal dt, PetscRea
     PetscCall(VecPointwiseMult(delta_vel_, delta_vel_, blender_));
     PetscCall(VecPointwiseMult(delta_eta_, delta_eta_, blender_));
 
-    PetscCall(VecAXPY(vel, factor * dt, delta_vel_));
-    PetscCall(VecAXPY(eta, factor * dt, delta_eta_));
+    PetscCall(VecAXPY(vel, -factor * dt, delta_vel_));
+    PetscCall(VecAXPY(eta, -factor * dt, delta_eta_));
 
     PetscFunctionReturn(PETSC_SUCCESS);
 }

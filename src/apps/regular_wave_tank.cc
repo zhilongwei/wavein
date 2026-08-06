@@ -331,6 +331,19 @@ PetscErrorCode run()
     {
         const PetscReal time = options.sim_start_time + step * options.sim_dt;
 
+        if (step % output_stride == 0 || step == num_steps)
+        {
+            PetscReal norm;
+            PetscCall(VecNorm(eta, NORM_INFINITY, &norm));
+            PetscCall(
+                PetscPrintf(comm,
+                            "step=%" PetscInt_FMT "/%" PetscInt_FMT
+                            " time=%.3f s progress=%.1f%% max_eta=%.6e\n",
+                            step, num_steps, static_cast<double>(time),
+                            100.0 * static_cast<double>(step) / static_cast<double>(num_steps),
+                            static_cast<double>(norm)));
+        }
+
         if (step >= flow_field_output_start_step && step <= flow_field_output_end_step &&
             (step - flow_field_output_start_step) % output_stride == 0)
         {
@@ -352,14 +365,6 @@ PetscErrorCode run()
         const PetscReal factor =
             PetscMin(1.0, (time - options.sim_start_time) / options.ramp_up_time);
         PetscCall(wave_tank.update(sol, eta, time, options.sim_dt, factor));
-
-        if (step % output_stride == 0 || step == num_steps)
-        {
-            PetscCall(PetscPrintf(
-                comm, "step=%" PetscInt_FMT "/%" PetscInt_FMT " time=%.3f s progress=%.1f%%\n",
-                step, num_steps, static_cast<double>(time),
-                100.0 * static_cast<double>(step) / static_cast<double>(num_steps)));
-        }
     }
 
     PetscCall(hdf5_writer.pop_group());
