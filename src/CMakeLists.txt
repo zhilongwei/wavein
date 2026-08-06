@@ -7,6 +7,7 @@ add_library(
     wavemaker.cc
     projection.cc
     regular_wave_tank.cc
+    dmstag_hdf5_writer.cc
 )
 
 target_include_directories(
