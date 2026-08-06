@@ -19,7 +19,7 @@ class RegularWaveTank
         RegularWaveTank &operator=(const RegularWaveTank &) = delete;
         ~RegularWaveTank() noexcept
         {
-            PetscCallAbort(comm_, destroy());
+            destroy();
         }
 
         PetscErrorCode update(Vec sol, Vec eta, PetscReal t, PetscReal dt,
@@ -30,21 +30,17 @@ class RegularWaveTank
         PetscErrorCode reference_fields(Vec sol, Vec eta, PetscReal t) const noexcept;
 
     private:
-        PetscErrorCode destroy() noexcept
+        void destroy() noexcept
         {
-            PetscFunctionBeginUser;
-
-            PetscCall(VecDestroy(&ref_sol_));
-            PetscCall(VecDestroy(&ref_eta_));
-            PetscCall(MatDestroy(&mat_extract_top_w_));
-            PetscCall(VecDestroy(&top_w_));
-            PetscCall(VecDestroy(&top_p_));
-            PetscCall(VecDestroy(&ref_sol_cos_));
-            PetscCall(VecDestroy(&ref_sol_sin_));
-            PetscCall(VecDestroy(&ref_eta_cos_));
-            PetscCall(VecDestroy(&ref_eta_sin_));
-
-            PetscFunctionReturn(PETSC_SUCCESS);
+            PetscCallAbort(comm_, VecDestroy(&ref_sol_));
+            PetscCallAbort(comm_, VecDestroy(&ref_eta_));
+            PetscCallAbort(comm_, MatDestroy(&mat_extract_top_w_));
+            PetscCallAbort(comm_, VecDestroy(&top_w_));
+            PetscCallAbort(comm_, VecDestroy(&top_p_));
+            PetscCallAbort(comm_, VecDestroy(&ref_sol_cos_));
+            PetscCallAbort(comm_, VecDestroy(&ref_sol_sin_));
+            PetscCallAbort(comm_, VecDestroy(&ref_eta_cos_));
+            PetscCallAbort(comm_, VecDestroy(&ref_eta_sin_));
         }
         MPI_Comm comm_ = MPI_COMM_NULL;
         const AiryWave &wave_;
