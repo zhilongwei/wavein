@@ -74,6 +74,43 @@ PetscErrorCode read_wave_tank_options(WaveTankOptions *options, PetscBool *shoul
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+PetscErrorCode initialize_velocity_mask(DM dm, Vec mask)
+{
+    PetscFunctionBeginUser;
+
+    Vec mask_local = nullptr;
+    PetscCall(DMGetLocalVector(dm, &mask_local));
+    PetscCall(VecSet(mask_local, 1.0));
+
+    PetscInt ip;
+    PetscCall(DMStagGetLocationSlot(dm, DMSTAG_ELEMENT, 0, &ip));
+
+    PetscReal ***c_arr_mask_local = nullptr;
+    // NOLINTBEGIN(bugprone-multi-level-implicit-pointer-conversion)
+    PetscCall(DMStagVecGetArray(dm, mask_local, &c_arr_mask_local));
+    // NOLINTEND(bugprone-multi-level-implicit-pointer-conversion)
+
+    PetscInt startx, starty, nx, ny, ex, ey;
+    PetscCall(DMStagGetCorners(dm, &startx, &starty, nullptr, &nx, &ny, nullptr, nullptr, nullptr,
+                               nullptr));
+
+    for (ey = starty; ey != starty + ny; ++ey)
+    {
+        for (ex = startx; ex != startx + nx; ++ex)
+        {
+            c_arr_mask_local[ey][ex][ip] = 0.0;
+        }
+    }
+
+    // NOLINTBEGIN(bugprone-multi-level-implicit-pointer-conversion)
+    PetscCall(DMStagVecRestoreArray(dm, mask_local, &c_arr_mask_local));
+    // NOLINTEND(bugprone-multi-level-implicit-pointer-conversion)
+    PetscCall(DMLocalToGlobal(dm, mask_local, INSERT_VALUES, mask));
+    PetscCall(DMRestoreLocalVector(dm, &mask_local));
+
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 PetscErrorCode initialize_velocity_and_surface_elevation(DM dm, const wavein::AiryWave &wave,
                                                          Vec sol, Vec eta, PetscReal t = 0.0)
 {
@@ -202,6 +239,10 @@ PetscErrorCode run()
     PetscCall(VecDuplicate(sol, &initial_sol));
     PetscCall(VecDuplicate(eta, &initial_eta));
 
+    Vec velocity_mask = nullptr;
+    PetscCall(DMCreateGlobalVector(dm, &velocity_mask));
+    PetscCall(initialize_velocity_mask(dm, velocity_mask));
+
     PetscReal tt = 0.0; // start time
     PetscCall(initialize_velocity_and_surface_elevation(dm, wave, sol, eta, tt));
     PetscCall(VecCopy(sol, initial_sol));
@@ -225,6 +266,7 @@ PetscErrorCode run()
     PetscCall(VecDuplicate(sol, &velocity_error));
     PetscCall(VecDuplicate(eta, &surface_elevation_error));
     PetscCall(VecWAXPY(velocity_error, -1.0, initial_sol, sol));
+    PetscCall(VecPointwiseMult(velocity_error, velocity_error, velocity_mask));
     PetscCall(VecWAXPY(surface_elevation_error, -1.0, initial_eta, eta));
 
     PetscReal velocity_relative_l2_error = 0.0, surface_elevation_relative_l2_error = 0.0;
@@ -252,6 +294,7 @@ PetscErrorCode run()
     PetscCall(VecDestroy(&initial_eta));
     PetscCall(VecDestroy(&sol));
     PetscCall(VecDestroy(&eta));
+    PetscCall(VecDestroy(&velocity_mask));
     PetscCall(DMDestroy(&dm));
 
     PetscFunctionReturn(PETSC_SUCCESS);

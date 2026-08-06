@@ -39,6 +39,7 @@ class Projection
             PetscCallAbort(comm_, MatDestroy(&mat_dp_dz_top_Dirichlet_bc_));
             PetscCallAbort(comm_, MatDestroy(&mat_migrate_top_p_up2element_));
             PetscCallAbort(comm_, DMDestroy(&dm_pressure_));
+            PetscCallAbort(comm_, VecDestroy(&velocity_mask_));
             PetscCallAbort(comm_, KSPDestroy(&ksp_));
             PetscCallAbort(comm_, VecDestroy(&rhs_));
             PetscCallAbort(comm_, VecDestroy(&pressure_top_row_element_));
@@ -59,6 +60,7 @@ class Projection
         Mat mat_d2p_dz2_top_Dirichlet_bc_ = nullptr;
         Mat mat_dp_dz_top_Dirichlet_bc_ = nullptr;
         Mat mat_migrate_top_p_up2element_ = nullptr;
+        Vec velocity_mask_ = nullptr;
 
         KSP ksp_ = nullptr;
 

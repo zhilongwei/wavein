@@ -29,6 +29,9 @@ Projection::Projection(MPI_Comm comm, DM dm, PetscReal dx, PetscReal dz, PetscRe
     PetscCallAbort(comm_, DMCreateMatrix(dm_, &mat_migrate_top_p_up2element_));
     PetscCallAbort(comm_, DMCreateGlobalVector(dm_, &dvel_));
 
+    // Create a mask vector for the velocity field
+    PetscCallAbort(comm_, DMCreateGlobalVector(dm_, &velocity_mask_));
+
     const PetscReal x_scale = 1.0 / dx_ / dx_;
     const PetscReal z_scale = 1.0 / dz_ / dz_;
 
@@ -637,6 +640,34 @@ Projection::Projection(MPI_Comm comm, DM dm, PetscReal dx, PetscReal dz, PetscRe
     PetscCallAbort(comm_, DMCreateGlobalVector(dm_pressure_, &rhs_pressure_grid_));
     PetscCallAbort(comm_, DMCreateGlobalVector(dm_pressure_, &sol_pressure_grid_));
 
+    // Set the velocity mask to zero for all pressure DOFs
+    Vec velocity_mask_local = nullptr;
+    PetscCallAbort(comm_, DMGetLocalVector(dm_, &velocity_mask_local));
+    PetscCallAbort(comm_, VecSet(velocity_mask_local, 1.0));
+
+    PetscInt ip;
+    PetscCallAbort(comm, DMStagGetLocationSlot(dm_, DMSTAG_ELEMENT, 0, &ip));
+
+    PetscReal ***c_arr_velocity_mask_local = nullptr;
+    // NOLINTBEGIN(bugprone-multi-level-implicit-pointer-conversion)
+    PetscCallAbort(comm_, DMStagVecGetArray(dm_, velocity_mask_local, &c_arr_velocity_mask_local));
+    // NOLINTEND(bugprone-multi-level-implicit-pointer-conversion)
+
+    for (ey = starty; ey != starty + ny; ++ey)
+    {
+        for (ex = startx; ex != startx + nx; ++ex)
+        {
+            c_arr_velocity_mask_local[ey][ex][ip] = 0.0;
+        }
+    }
+
+    // NOLINTBEGIN(bugprone-multi-level-implicit-pointer-conversion)
+    PetscCallAbort(comm_,
+                   DMStagVecRestoreArray(dm_, velocity_mask_local, &c_arr_velocity_mask_local));
+    // NOLINTEND(bugprone-multi-level-implicit-pointer-conversion)
+    PetscCallAbort(comm_, DMLocalToGlobal(dm_, velocity_mask_local, INSERT_VALUES, velocity_mask_));
+    PetscCallAbort(comm_, DMRestoreLocalVector(dm_, &velocity_mask_local));
+
     PetscFunctionReturnVoid();
 }
 
@@ -664,6 +695,10 @@ PetscErrorCode Projection::project(Vec sol, Vec ptop, PetscReal dt) noexcept
 
     // dvel now stores the pressure gradient
     PetscCall(MatMult(mat_grad_pressure_, rhs_, dvel_));
+
+    // Store solved pressure in sol before it is reused.
+    PetscCall(VecPointwiseMult(sol, sol, velocity_mask_));
+    PetscCall(VecAXPY(sol, 1.0, rhs_));
 
     // dp/dz at the top boundary
     PetscCall(MatMult(mat_dp_dz_top_Dirichlet_bc_, pressure_top_row_element_, rhs_));
