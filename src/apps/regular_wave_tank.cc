@@ -387,3 +387,85 @@ int main(int argc, char **argv)
 
     return static_cast<int>(run_error != PETSC_SUCCESS ? run_error : finalize_error);
 }
+
+// Example usage
+// -------------
+//
+// Show the command-line options:
+//   app=./build/release/src/apps/regular_wave_tank
+//   "${app}" -help
+//
+// Simulation options:
+//   -sim_start_time     Simulation start time in seconds; normally 0.
+//   -sim_end_time       Simulation end time in seconds.
+//   -sim_dt             Time-step size in seconds.
+//
+// Output options:
+//   -output                                      HDF5 output filename.
+//   -flow_field_output_start_time                First output time for u, w, and p.
+//   -flow_field_output_end_time                  Last output time for u, w, and p.
+//   -flow_surface_elevation_output_start_time    First output time for eta.
+//   -flow_surface_elevation_output_end_time      Last output time for eta.
+//   -flow_output_interval                        Time between output samples in seconds.
+//
+// Wave options:
+//   -wave_height       Wave height H in metres.
+//   -wave_period       Wave period T in seconds.
+//   -water_depth       Still-water depth h in metres; the vertical domain is [-h, 0].
+//
+// Domain and grid options:
+//   -xmin              Left computational boundary in metres; normally -nin*L.
+//   -xmax              Right computational boundary in metres; normally Ltank+nout*L.
+//   -nx                Total number of cells over the complete computational domain.
+//   -nz                Number of cells over the water depth.
+//
+// Wavemaker options:
+//   -nin               Inlet forcing-zone length measured in wavelengths.
+//   -nout              Outlet forcing-zone length measured in wavelengths.
+//   -gamma             Forcing-zone relaxation rate in 1/s.
+//   -ramp_up_time      Duration of the linear wavemaker ramp in seconds.
+//
+// By convention, the physical wave tank starts at x=0 and ends at x=Ltank. The forcing zones
+// extend the computational domain beyond the physical tank:
+//   xmin = -nin*L
+//   xmax = Ltank+nout*L
+// If Ltank=NL*L and nxl cells per wavelength are required, use
+// nx=(NL+nin+nout)*nxl. The inlet forcing zone is [-nin*L, 0], and the outlet forcing zone is
+// [Ltank, Ltank+nout*L].
+//
+// For T=1.5 s, h=0.7 m, and H=0.07 m, the finite-depth Airy wavelength is
+// L=3.1173251893 m. A seven-wavelength physical tank with nin=nout=1 and 40 cells per
+// wavelength therefore uses:
+//   Ltank = 7*L = 21.8212763248 m
+//   xmin = -L = -3.1173251893 m
+//   xmax = Ltank+L = 8*L = 24.9386015141 m
+//   nx = (7+1+1)*40 = 360
+//   nz = 20
+//
+// Simulation and output times are conveniently defined using the wave period. The target case
+// uses a ramp time of 1*T, a simulation duration of 7*T, dt=T/100, and an output interval of
+// T/20. The Airy phase celerity is c=L/T, so a wave travels across the seven-wavelength physical
+// tank in 7*T=10.5 s. Recording only the final period gives an output window of [6*T, 7*T], or
+// [9.0, 10.5] s.
+//
+// Run the target case on one MPI rank:
+//   "${app}" \
+//       -sim_start_time 0.0 -sim_end_time 10.5 -sim_dt 0.015 \
+//       -flow_field_output_start_time 9.0 -flow_field_output_end_time 10.5 \
+//       -flow_surface_elevation_output_start_time 9.0 \
+//       -flow_surface_elevation_output_end_time 10.5 -flow_output_interval 0.075 \
+//       -wave_height 0.07 -wave_period 1.5 -water_depth 0.7 \
+//       -xmin -3.1173251893 -xmax 24.9386015141 -nx 360 -nz 20 \
+//       -nin 1.0 -nout 1.0 -gamma 6.68 -ramp_up_time 1.5 \
+//       -output regular_wave_tank.h5
+//
+// Run the same case on four MPI ranks:
+//   mpiexec -n 4 "${app}" \
+//       -sim_start_time 0.0 -sim_end_time 10.5 -sim_dt 0.015 \
+//       -flow_field_output_start_time 9.0 -flow_field_output_end_time 10.5 \
+//       -flow_surface_elevation_output_start_time 9.0 \
+//       -flow_surface_elevation_output_end_time 10.5 -flow_output_interval 0.075 \
+//       -wave_height 0.07 -wave_period 1.5 -water_depth 0.7 \
+//       -xmin -3.1173251893 -xmax 24.9386015141 -nx 360 -nz 20 \
+//       -nin 1.0 -nout 1.0 -gamma 6.68 -ramp_up_time 1.5 \
+//       -output regular_wave_tank_mpi.h5

@@ -37,8 +37,8 @@ if(BUILD_TESTING)
             -wave_period 1.50
             -water_depth 0.70
             -xmin -3.1173251893
-            -xmax 18.7039511356
-            -nx 280
+            -xmax 24.9386015141
+            -nx 360
             -nz 20
             -nin 1
             -nout 1
