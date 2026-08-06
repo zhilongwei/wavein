@@ -32,20 +32,24 @@ class Projection
     private:
         void destroy() noexcept
         {
+            PetscCallAbort(comm_, KSPDestroy(&ksp_));
+
+            PetscCallAbort(comm_, VecDestroy(&rhs_));
+            PetscCallAbort(comm_, VecDestroy(&pressure_top_row_element_));
+            PetscCallAbort(comm_, VecDestroy(&rhs_pressure_grid_));
+            PetscCallAbort(comm_, VecDestroy(&sol_pressure_grid_));
+            PetscCallAbort(comm_, VecDestroy(&dvel_));
+            PetscCallAbort(comm_, VecDestroy(&velocity_mask_));
+
             PetscCallAbort(comm_, MatDestroy(&mat_a_));
             PetscCallAbort(comm_, MatDestroy(&mat_div_vel_));
             PetscCallAbort(comm_, MatDestroy(&mat_grad_pressure_));
             PetscCallAbort(comm_, MatDestroy(&mat_d2p_dz2_top_Dirichlet_bc_));
             PetscCallAbort(comm_, MatDestroy(&mat_dp_dz_top_Dirichlet_bc_));
             PetscCallAbort(comm_, MatDestroy(&mat_migrate_top_p_up2element_));
+
             PetscCallAbort(comm_, DMDestroy(&dm_pressure_));
-            PetscCallAbort(comm_, VecDestroy(&velocity_mask_));
-            PetscCallAbort(comm_, KSPDestroy(&ksp_));
-            PetscCallAbort(comm_, VecDestroy(&rhs_));
-            PetscCallAbort(comm_, VecDestroy(&pressure_top_row_element_));
-            PetscCallAbort(comm_, VecDestroy(&rhs_pressure_grid_));
-            PetscCallAbort(comm_, VecDestroy(&sol_pressure_grid_));
-            PetscCallAbort(comm_, VecDestroy(&dvel_));
+            PetscCallAbort(comm_, DMDestroy(&dm_));
         }
         MPI_Comm comm_ = MPI_COMM_NULL;
         DM dm_ = nullptr;
