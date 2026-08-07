@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "wavein/airy_wave.h"
 #include "wavein/irregular_waves.h"
 #include "wavein/projection.h"
 #include "wavein/wavemaker.h"
@@ -9,17 +10,19 @@
 namespace wavein
 {
 
-class IrregularWaveTank
+class WaveTank
 {
     public:
-        IrregularWaveTank() = delete;
+        WaveTank() = delete;
 
-        IrregularWaveTank(MPI_Comm comm, DM dm, const IrregularWaves &waves, Wavemaker &wavemaker,
-                          Projection &projection, PetscReal rhow = kSeawaterDensity);
+        WaveTank(MPI_Comm comm, DM dm, const AiryWave &wave, Wavemaker &wavemaker,
+                 Projection &projection, PetscReal rhow = kSeawaterDensity);
+        WaveTank(MPI_Comm comm, DM dm, const IrregularWaves &waves, Wavemaker &wavemaker,
+                 Projection &projection, PetscReal rhow = kSeawaterDensity);
 
-        IrregularWaveTank(const IrregularWaveTank &) = delete;
-        IrregularWaveTank &operator=(const IrregularWaveTank &) = delete;
-        ~IrregularWaveTank() noexcept
+        WaveTank(const WaveTank &) = delete;
+        WaveTank &operator=(const WaveTank &) = delete;
+        ~WaveTank() noexcept
         {
             destroy();
         }
@@ -29,10 +32,11 @@ class IrregularWaveTank
         PetscErrorCode update(Vec sol, Vec eta, Vec source, PetscReal t, PetscReal dt,
                               PetscReal factor) noexcept;
 
-        PetscErrorCode reference_fields(Vec sol, Vec eta, PetscReal t) noexcept;
-
     private:
-        PetscErrorCode precompute_reference_modes() noexcept;
+        WaveTank(MPI_Comm comm, DM dm, std::vector<WaveComponent> components, PetscReal water_depth,
+                 Wavemaker &wavemaker, Projection &projection, PetscReal rhow);
+
+        PetscErrorCode precompute_reference_modes(DM dm, PetscReal water_depth) noexcept;
 
         void destroy() noexcept
         {
@@ -57,15 +61,14 @@ class IrregularWaveTank
             {
                 PetscCallAbort(comm_, VecDestroy(&mode));
             }
-            PetscCallAbort(comm_, DMDestroy(&dm_));
         }
 
         MPI_Comm comm_ = MPI_COMM_NULL;
-        DM dm_ = nullptr;
-        const IrregularWaves &waves_;
+        const std::vector<WaveComponent> components_;
         Wavemaker &wavemaker_;
         Projection &projection_;
         PetscReal rhow_ = 0.0;
+        DMBoundaryType xboundary_ = DM_BOUNDARY_NONE;
 
         std::vector<Vec> ref_sol_cos_;
         std::vector<Vec> ref_sol_sin_;

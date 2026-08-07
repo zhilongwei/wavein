@@ -1,7 +1,7 @@
 #include "wavein/airy_wave.h"
 #include "wavein/dmstag_hdf5_writer.h"
 #include "wavein/projection.h"
-#include "wavein/regular_wave_tank.h"
+#include "wavein/wave_tank.h"
 #include "wavein/wavemaker.h"
 
 #include <petscdmstag.h>
@@ -241,8 +241,7 @@ PetscErrorCode run()
 
     wavein::Projection projection(comm, dm, dx, dz, wavein::kSeawaterDensity);
 
-    wavein::RegularWaveTank wave_tank(comm, dm, wave, wavemaker, projection,
-                                      wavein::kSeawaterDensity);
+    wavein::WaveTank wave_tank(comm, dm, wave, wavemaker, projection, wavein::kSeawaterDensity);
 
     Vec sol = nullptr, eta = nullptr, initial_sol = nullptr, initial_eta = nullptr;
     PetscCall(DMCreateGlobalVector(dm, &sol));

@@ -34,7 +34,7 @@ struct SpectralRealization
 [[nodiscard]] SpectralRealization realize_surface_elevation(const wavein::IrregularWaves &waves)
 {
     PetscReal spectral_variance = 0.0;
-    for (const wavein::IrregularWaveComponent &component : waves.components())
+    for (const wavein::WaveComponent &component : waves.components())
     {
         spectral_variance += 0.5 * PetscSqr(component.amplitude);
     }
@@ -48,7 +48,7 @@ struct SpectralRealization
     {
         const PetscReal time = static_cast<PetscReal>(sample) * delta_time;
         PetscReal eta = 0.0;
-        for (const wavein::IrregularWaveComponent &component : waves.components())
+        for (const wavein::WaveComponent &component : waves.components())
         {
             eta += component.amplitude * PetscCosReal(component.omega * time + component.phase);
         }
