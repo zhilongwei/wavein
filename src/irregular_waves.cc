@@ -1,8 +1,35 @@
 #include "wavein/irregular_waves.h"
 #include "wavein/airy_wave.h"
 
+#include <random>
+
 namespace wavein
 {
+
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+IrregularWaves::IrregularWaves(MPI_Comm comm, const WaveSpectrum &spectrum, PetscReal h,
+                               PetscReal omega_min, PetscReal omega_max, PetscInt component_count,
+                               unsigned long random_seed)
+    : comm_(comm), spectrum_(spectrum), h_(h)
+{
+    PetscFunctionBeginUser;
+
+    const PetscReal delta_omega = (omega_max - omega_min) / static_cast<PetscReal>(component_count);
+    std::mt19937 generator(static_cast<std::mt19937::result_type>(random_seed));
+    std::uniform_real_distribution<PetscReal> phase_distribution(0.0, 2.0 * PETSC_PI);
+
+    components_.reserve(static_cast<std::size_t>(component_count));
+    for (PetscInt component = 0; component != component_count; ++component)
+    {
+        const PetscReal omega = omega_min + (static_cast<PetscReal>(component) + 0.5) * delta_omega;
+        const PetscReal amplitude = PetscSqrtReal(2.0 * spectrum_.spectrum(omega) * delta_omega);
+        const AiryWave wave(comm_, h_, 2.0 * PETSC_PI / omega);
+        components_.push_back({omega, wave.wavenumber(), amplitude, phase_distribution(generator)});
+    }
+
+    PetscFunctionReturnVoid();
+}
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 PetscErrorCode IrregularWaves::velocity_spectra(Vec omegas, PetscReal z,
                                                 Vec horizontal_velocity_spectrum,
