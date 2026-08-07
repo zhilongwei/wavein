@@ -80,17 +80,17 @@ PetscErrorCode DMStagHDF5Writer::write_metadata(DM dm, Vec prototype)
     PetscCall(DMStagGetProductCoordinateLocationSlot(dm, DMSTAG_LEFT, &iprev));
     PetscCall(DMStagGetProductCoordinateLocationSlot(dm, DMSTAG_ELEMENT, &icenter));
 
-    PetscScalar **c_arr_coord_x = nullptr;
-    PetscScalar **c_arr_coord_z = nullptr;
+    PetscReal **c_arr_coord_x = nullptr;
+    PetscReal **c_arr_coord_z = nullptr;
     // NOLINTBEGIN(bugprone-multi-level-implicit-pointer-conversion)
     PetscCall(DMStagGetProductCoordinateArraysRead(dm, &c_arr_coord_x, &c_arr_coord_z, nullptr));
     // NOLINTEND(bugprone-multi-level-implicit-pointer-conversion)
 
-    PetscScalar ***c_arr_x_local = nullptr;
-    PetscScalar ***c_arr_z_local = nullptr;
-    PetscScalar ***c_arr_location_local = nullptr;
-    PetscScalar ***c_arr_logical_i_local = nullptr;
-    PetscScalar ***c_arr_logical_j_local = nullptr;
+    PetscReal ***c_arr_x_local = nullptr;
+    PetscReal ***c_arr_z_local = nullptr;
+    PetscReal ***c_arr_location_local = nullptr;
+    PetscReal ***c_arr_logical_i_local = nullptr;
+    PetscReal ***c_arr_logical_j_local = nullptr;
     // NOLINTBEGIN(bugprone-multi-level-implicit-pointer-conversion)
     PetscCall(DMStagVecGetArray(dm, x_local, &c_arr_x_local));
     PetscCall(DMStagVecGetArray(dm, z_local, &c_arr_z_local));

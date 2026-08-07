@@ -148,7 +148,7 @@ RegularWaveTank::RegularWaveTank(MPI_Comm comm, DM dm, const AiryWave &wave, Wav
 
     // Assemble the matrix to extract the vertical velocity at the top boundary
     DMStagStencil row, col;
-    PetscScalar val;
+    PetscReal val;
 
     for (ey = starty; ey != starty + ny; ++ey)
     {
