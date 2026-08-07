@@ -4,6 +4,7 @@ add_library(
     airy_wave.cc
     jonswap.cc
     irregular_waves.cc
+    irregular_wave_tank.cc
     wavemaker.cc
     projection.cc
     regular_wave_tank.cc
