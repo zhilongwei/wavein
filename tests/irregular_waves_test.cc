@@ -1,10 +1,10 @@
+#include "wavein/irregular_waves.h"
 #include "wavein/jonswap.h"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <numeric>
-#include <random>
 #include <utility>
 #include <vector>
 
@@ -14,22 +14,16 @@ namespace
 constexpr PetscReal Hs = 2.00; // target significant wave height
 constexpr PetscReal Tp = 10.0; // target peak period
 constexpr PetscReal peak_enhancement_factor = 3.3;
+constexpr PetscReal water_depth = 20.0;
 constexpr PetscReal Tz = 0.834 * Tp; // zero-crossing period for JONSWAP spectrum with gamma = 3.3
 constexpr PetscReal omega_min = 1.00 / Tz;        // minimum angular frequency for JONSWAP spectrum
 constexpr PetscReal omega_max = 20.0 / Tz;        // maximum angular frequency for JONSWAP spectrum
 constexpr PetscReal duration = 3.0 * 60.0 * 60.0; // 3 hours
 constexpr PetscInt omega_point_count = 300;       // number of angular frequencies
 constexpr PetscInt samples_per_zero_crossing_period = 40;
-constexpr std::mt19937::result_type random_seed = 20260805U;
+constexpr unsigned long random_seed = 20260805UL;
 constexpr PetscReal mean_tolerance = 1.0e-3;
 constexpr PetscReal variance_tolerance = 5.0e-3;
-
-struct WaveComponent
-{
-        PetscReal omega;
-        PetscReal amplitude;
-        PetscReal phase;
-};
 
 struct SpectralRealization
 {
@@ -37,23 +31,12 @@ struct SpectralRealization
         PetscReal spectral_variance;
 };
 
-[[nodiscard]] SpectralRealization realize_surface_elevation(const wavein::WaveSpectrum &spectrum)
+[[nodiscard]] SpectralRealization realize_surface_elevation(const wavein::IrregularWaves &waves)
 {
-    const PetscReal delta_omega =
-        (omega_max - omega_min) / static_cast<PetscReal>(omega_point_count - 1);
-    std::mt19937 generator(random_seed);
-    std::uniform_real_distribution<PetscReal> phase_distribution(0.0, 2.0 * PETSC_PI);
-    std::vector<WaveComponent> components;
-    components.reserve(static_cast<std::size_t>(omega_point_count - 1));
     PetscReal spectral_variance = 0.0;
-
-    for (PetscInt strip = 0; strip < omega_point_count - 1; ++strip)
+    for (const wavein::IrregularWaveComponent &component : waves.components())
     {
-        const PetscReal omega = omega_min + (static_cast<PetscReal>(strip) + 0.5) * delta_omega;
-        const PetscReal component_variance = spectrum.spectrum(omega) * delta_omega;
-        const PetscReal amplitude = PetscSqrtReal(2.0 * component_variance);
-        spectral_variance += component_variance;
-        components.push_back({omega, amplitude, phase_distribution(generator)});
+        spectral_variance += 0.5 * PetscSqr(component.amplitude);
     }
 
     const auto zero_crossing_count = static_cast<PetscInt>(duration / Tz);
@@ -65,7 +48,7 @@ struct SpectralRealization
     {
         const PetscReal time = static_cast<PetscReal>(sample) * delta_time;
         PetscReal eta = 0.0;
-        for (const WaveComponent &component : components)
+        for (const wavein::IrregularWaveComponent &component : waves.components())
         {
             eta += component.amplitude * PetscCosReal(component.omega * time + component.phase);
         }
@@ -96,7 +79,9 @@ struct SpectralRealization
 TEST_CASE("Irregular-wave surface elevation recovers the spectral variance", "[irregular_waves]")
 {
     const wavein::Jonswap spectrum(Hs, Tp, peak_enhancement_factor);
-    const SpectralRealization realization = realize_surface_elevation(spectrum);
+    const wavein::IrregularWaves waves(PETSC_COMM_WORLD, spectrum, water_depth, omega_min,
+                                       omega_max, omega_point_count - 1, random_seed);
+    const SpectralRealization realization = realize_surface_elevation(waves);
     const PetscReal elevation_mean = mean(realization.elevation);
     const PetscReal elevation_variance = variance(realization.elevation, elevation_mean);
 
