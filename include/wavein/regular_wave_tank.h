@@ -27,8 +27,6 @@ class RegularWaveTank
         PetscErrorCode update(Vec sol, Vec eta, Vec source, PetscReal t, PetscReal dt,
                               PetscReal factor) noexcept;
 
-        PetscErrorCode reference_fields(Vec sol, Vec eta, PetscReal t) const noexcept;
-
     private:
         void destroy() noexcept
         {

@@ -186,11 +186,12 @@ PetscErrorCode RegularWaveTank::update(Vec sol, Vec eta, Vec source, PetscReal t
 {
     PetscFunctionBeginUser;
 
-    if (xboundary_ == DM_BOUNDARY_NONE)
-    {
-        PetscCall(reference_fields(ref_sol_, ref_eta_, t));
-        PetscCall(wavemaker_.force(ref_sol_, ref_eta_, dt, factor, sol, eta));
-    }
+    const PetscReal phase = wave_.wave_frequency() * t;
+    const PetscReal cos_phase = PetscCosReal(phase);
+    const PetscReal sin_phase = PetscSinReal(phase);
+    PetscCall(VecAXPBYPCZ(ref_sol_, cos_phase, sin_phase, 0.0, ref_sol_cos_, ref_sol_sin_));
+    PetscCall(VecAXPBYPCZ(ref_eta_, cos_phase, sin_phase, 0.0, ref_eta_cos_, ref_eta_sin_));
+    PetscCall(wavemaker_.force(ref_sol_, ref_eta_, dt, factor, sol, eta));
 
     // Update the surface elevation and the presure at the linearized free surface
     PetscCall(MatMult(mat_extract_top_w_, sol, top_w_));
@@ -216,25 +217,6 @@ PetscErrorCode RegularWaveTank::update(Vec sol, Vec eta, PetscReal t, PetscReal 
     PetscFunctionBeginUser;
 
     PetscCall(update(sol, eta, nullptr, t, dt, factor));
-
-    PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-PetscErrorCode RegularWaveTank::reference_fields(Vec sol, Vec eta, PetscReal t) const noexcept
-{
-    PetscFunctionBeginUser;
-
-    const PetscReal phase = wave_.wave_frequency() * t;
-    const PetscReal cos_phase = PetscCosReal(phase);
-    const PetscReal sin_phase = PetscSinReal(phase);
-
-    PetscCall(VecCopy(ref_sol_cos_, sol));
-    PetscCall(VecScale(sol, cos_phase));
-    PetscCall(VecAXPY(sol, sin_phase, ref_sol_sin_));
-
-    PetscCall(VecCopy(ref_eta_cos_, eta));
-    PetscCall(VecScale(eta, cos_phase));
-    PetscCall(VecAXPY(eta, sin_phase, ref_eta_sin_));
 
     PetscFunctionReturn(PETSC_SUCCESS);
 }
