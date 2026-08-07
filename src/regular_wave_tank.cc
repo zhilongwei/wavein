@@ -92,7 +92,7 @@ RegularWaveTank::RegularWaveTank(MPI_Comm comm, DM dm, const AiryWave &wave, Wav
         {
             PetscReal x = c_arr_x[ex][iprev];
 
-            if (!geometry.is_in_forcing_zone(x))
+            if (!geometry.is_in_inlet_forcing_zone(x))
             {
                 continue;
             }
@@ -112,7 +112,7 @@ RegularWaveTank::RegularWaveTank(MPI_Comm comm, DM dm, const AiryWave &wave, Wav
         {
             PetscReal x = c_arr_x[ex][icenter];
 
-            if (!geometry.is_in_forcing_zone(x))
+            if (!geometry.is_in_inlet_forcing_zone(x))
             {
                 continue;
             }

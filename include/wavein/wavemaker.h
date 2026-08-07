@@ -13,10 +13,9 @@ struct ForcingZoneGeometry
         PetscReal inlet_length;
         PetscReal outlet_length;
 
-        [[nodiscard]] PetscBool is_in_forcing_zone(PetscReal x) const noexcept
+        [[nodiscard]] PetscBool is_in_inlet_forcing_zone(PetscReal x) const noexcept
         {
-            return (x >= xmin && x <= xmin + inlet_length) ||
-                   (x >= xmax - outlet_length && x <= xmax);
+            return x >= xmin && x <= xmin + inlet_length;
         }
 };
 
