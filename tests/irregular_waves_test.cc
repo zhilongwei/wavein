@@ -1,8 +1,13 @@
+#include "wavein/airy_wave.h"
 #include "wavein/irregular_waves.h"
 #include "wavein/jonswap.h"
+#include "wavein/projection.h"
+#include "wavein/wave_tank.h"
+#include "wavein/wavemaker.h"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <petscdmstag.h>
 
 #include <numeric>
 #include <utility>
@@ -89,4 +94,67 @@ TEST_CASE("Irregular-wave surface elevation recovers the spectral variance", "[i
     REQUIRE(elevation_mean == Catch::Approx(0.0).margin(mean_tolerance));
     REQUIRE(elevation_variance ==
             Catch::Approx(realization.spectral_variance).epsilon(variance_tolerance));
+}
+
+TEST_CASE("Irregular-wave tank advances a multi-component field", "[irregular_waves][wave_tank]")
+{
+    constexpr PetscInt nx = 16;
+    constexpr PetscInt nz = 4;
+    constexpr PetscInt component_count = 8;
+    constexpr PetscReal dt = 0.01;
+    constexpr PetscReal time = 0.37;
+
+    const MPI_Comm comm = PETSC_COMM_WORLD;
+    const wavein::Jonswap spectrum(Hs, Tp, peak_enhancement_factor);
+    const wavein::IrregularWaves waves(comm, spectrum, water_depth, omega_min, omega_max,
+                                       component_count, random_seed);
+    const wavein::AiryWave peak_wave(comm, water_depth, Tp, Hs);
+
+    const PetscReal wavelength = peak_wave.wavelength();
+    const PetscReal xmin = -wavelength;
+    const PetscReal xmax = 3.0 * wavelength;
+    const PetscReal zmin = -water_depth;
+    const PetscReal zmax = 0.0;
+
+    DM dm = nullptr;
+    PetscCallAbort(comm, DMStagCreate2d(comm, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, nx, nz,
+                                        PETSC_DECIDE, PETSC_DECIDE, 0, 1, 1, DMSTAG_STENCIL_BOX, 1,
+                                        nullptr, nullptr, &dm));
+    PetscCallAbort(comm, DMSetUp(dm));
+    PetscCallAbort(comm, DMStagSetUniformCoordinatesProduct(dm, xmin, xmax, zmin, zmax, 0.0, 0.0));
+
+    const PetscReal dx = (xmax - xmin) / static_cast<PetscReal>(nx);
+    const PetscReal dz = (zmax - zmin) / static_cast<PetscReal>(nz);
+
+    Vec sol = nullptr;
+    Vec eta = nullptr;
+    PetscCallAbort(comm, DMCreateGlobalVector(dm, &sol));
+    PetscCallAbort(comm, DMCreateGlobalVector(dm, &eta));
+    PetscCallAbort(comm, VecZeroEntries(sol));
+    PetscCallAbort(comm, VecZeroEntries(eta));
+
+    PetscReal sol_norm = 0.0;
+    PetscReal eta_norm = 0.0;
+    PetscReal divergence_norm = 0.0;
+    {
+        wavein::Wavemaker wavemaker(comm, dm, wavelength, xmin, xmax, 1.0, 1.0, 1.0);
+        wavein::Projection projection(comm, dm, dx, dz);
+        wavein::WaveTank wave_tank(comm, dm, waves, wavemaker, projection);
+
+        PetscCallAbort(comm, wave_tank.update(sol, eta, time, dt, 1.0));
+        PetscCallAbort(comm, VecNorm(sol, NORM_2, &sol_norm));
+        PetscCallAbort(comm, VecNorm(eta, NORM_2, &eta_norm));
+        PetscCallAbort(comm, projection.divergence_norm(sol, &divergence_norm));
+    }
+
+    PetscCallAbort(comm, VecDestroy(&eta));
+    PetscCallAbort(comm, VecDestroy(&sol));
+    PetscCallAbort(comm, DMDestroy(&dm));
+
+    REQUIRE_FALSE(PetscIsInfOrNanReal(sol_norm));
+    REQUIRE_FALSE(PetscIsInfOrNanReal(eta_norm));
+    REQUIRE_FALSE(PetscIsInfOrNanReal(divergence_norm));
+    REQUIRE(sol_norm > 0.0);
+    REQUIRE(eta_norm > 0.0);
+    REQUIRE(divergence_norm <= 1.0e-10 * sol_norm);
 }
