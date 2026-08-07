@@ -23,8 +23,7 @@ IrregularWaves::IrregularWaves(MPI_Comm comm, const WaveSpectrum &spectrum, Pets
     {
         const PetscReal omega = omega_min + (static_cast<PetscReal>(component) + 0.5) * delta_omega;
         const PetscReal amplitude = PetscSqrtReal(2.0 * spectrum_.spectrum(omega) * delta_omega);
-        const AiryWave wave(comm_, h_, 2.0 * PETSC_PI / omega);
-        components_.push_back({omega, wave.wavenumber(), amplitude, phase_distribution(generator)});
+        components_.push_back({omega, amplitude, phase_distribution(generator)});
     }
 
     PetscFunctionReturnVoid();

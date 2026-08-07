@@ -9,10 +9,9 @@
 namespace wavein
 {
 
-struct IrregularWaveComponent
+struct WaveComponent
 {
         PetscReal omega;
-        PetscReal wavenumber;
         PetscReal amplitude;
         PetscReal phase;
 };
@@ -47,7 +46,7 @@ class IrregularWaves
             return h_;
         }
 
-        [[nodiscard]] const std::vector<IrregularWaveComponent> &components() const noexcept
+        [[nodiscard]] const std::vector<WaveComponent> &components() const noexcept
         {
             return components_;
         }
@@ -56,7 +55,7 @@ class IrregularWaves
         const MPI_Comm comm_;          // MPI communicator
         const WaveSpectrum &spectrum_; // reference to wave spectrum
         const PetscReal h_;            // water depth
-        std::vector<IrregularWaveComponent> components_;
+        std::vector<WaveComponent> components_;
 };
 
 } // namespace wavein
