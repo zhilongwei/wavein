@@ -58,7 +58,7 @@ WaveTank::WaveTank(MPI_Comm comm, DM dm, std::vector<WaveComponent> components,
                                            nullptr, nullptr, nullptr));
 
     DMStagStencil row, col;
-    PetscScalar val;
+    PetscReal val;
 
     for (ey = starty; ey != starty + ny; ++ey)
     {
