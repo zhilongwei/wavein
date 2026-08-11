@@ -1,11 +1,15 @@
 #include "wavein/dmstag_hdf5_writer.h"
 
+#include <petscsystypes.h>
 #include <petscviewerhdf5.h>
 
 namespace
 {
 
 constexpr const char *kDMStagGroup = "dmstag";
+constexpr const char *kWaveGroup = "/wave";
+constexpr const char *kDomainGroup = "/domain";
+constexpr const char *kSimulationGroup = "/simulation";
 constexpr PetscInt kLocationU = 0;
 constexpr PetscInt kLocationW = 1;
 constexpr PetscInt kLocationP = 2;
@@ -262,9 +266,14 @@ PetscErrorCode DMStagHDF5Writer::pop_group()
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode DMStagHDF5Writer::write(const AiryWave &wave)
+PetscErrorCode DMStagHDF5Writer::write_airy_wave(const AiryWave &wave)
 {
     PetscFunctionBeginUser;
+
+    PetscCall(PetscViewerHDF5PushGroup(viewer_, kWaveGroup));
+
+    const char wave_type[] = "airy";
+    PetscCall(PetscViewerHDF5WriteAttribute(viewer_, nullptr, "type", PETSC_STRING, wave_type));
 
     PetscReal value = wave.wave_height();
     PetscCall(PetscViewerHDF5WriteAttribute(viewer_, nullptr, "height", PETSC_REAL, &value));
@@ -274,6 +283,47 @@ PetscErrorCode DMStagHDF5Writer::write(const AiryWave &wave)
     PetscCall(PetscViewerHDF5WriteAttribute(viewer_, nullptr, "period", PETSC_REAL, &value));
     value = wave.wavelength();
     PetscCall(PetscViewerHDF5WriteAttribute(viewer_, nullptr, "wavelength", PETSC_REAL, &value));
+
+    PetscCall(PetscViewerHDF5PopGroup(viewer_));
+
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+PetscErrorCode DMStagHDF5Writer::write_domain(PetscReal xmin, PetscReal xmax,
+                                              PetscReal physical_xmin, PetscReal physical_xmax)
+{
+    PetscFunctionBeginUser;
+
+    PetscCall(PetscViewerHDF5PushGroup(viewer_, kDomainGroup));
+
+    PetscCall(PetscViewerHDF5WriteAttribute(viewer_, nullptr, "xmin", PETSC_REAL, &xmin));
+    PetscCall(PetscViewerHDF5WriteAttribute(viewer_, nullptr, "xmax", PETSC_REAL, &xmax));
+    PetscCall(PetscViewerHDF5WriteAttribute(viewer_, nullptr, "physical_xmin", PETSC_REAL,
+                                            &physical_xmin));
+    PetscCall(PetscViewerHDF5WriteAttribute(viewer_, nullptr, "physical_xmax", PETSC_REAL,
+                                            &physical_xmax));
+
+    PetscCall(PetscViewerHDF5PopGroup(viewer_));
+
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+PetscErrorCode DMStagHDF5Writer::write_simulation(PetscReal start_time, PetscReal end_time,
+                                                  PetscReal dt, PetscInt nsteps)
+{
+    PetscFunctionBeginUser;
+
+    PetscCall(PetscViewerHDF5PushGroup(viewer_, kSimulationGroup));
+
+    PetscCall(
+        PetscViewerHDF5WriteAttribute(viewer_, nullptr, "start_time", PETSC_REAL, &start_time));
+    PetscCall(PetscViewerHDF5WriteAttribute(viewer_, nullptr, "end_time", PETSC_REAL, &end_time));
+    PetscCall(PetscViewerHDF5WriteAttribute(viewer_, nullptr, "dt", PETSC_REAL, &dt));
+    PetscCall(PetscViewerHDF5WriteAttribute(viewer_, nullptr, "nsteps", PETSC_INT, &nsteps));
+
+    PetscCall(PetscViewerHDF5PopGroup(viewer_));
 
     PetscFunctionReturn(PETSC_SUCCESS);
 }

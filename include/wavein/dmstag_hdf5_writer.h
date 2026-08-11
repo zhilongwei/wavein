@@ -26,7 +26,13 @@ class DMStagHDF5Writer
 
         // Writes the metadata for the AiryWave object. This includes the wave height, water depth,
         // wave period, and wavelength.
-        PetscErrorCode write(const AiryWave &wave);
+        PetscErrorCode write_airy_wave(const AiryWave &wave);
+
+        PetscErrorCode write_domain(PetscReal xmin, PetscReal xmax, PetscReal physical_xmin,
+                                    PetscReal physical_xmax);
+
+        PetscErrorCode write_simulation(PetscReal start_time, PetscReal end_time, PetscReal dt,
+                                        PetscInt nsteps);
 
         // Writes the packed DMSTAG vector. Construction writes entry-aligned x, z, location,
         // i, and j datasets for decomposition-independent post-processing.

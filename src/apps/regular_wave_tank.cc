@@ -320,10 +320,15 @@ PetscErrorCode run()
     PetscViewer hdf5viewer = nullptr;
     PetscCall(PetscViewerHDF5Open(comm, options.output, FILE_MODE_WRITE, &hdf5viewer));
     wavein::DMStagHDF5Writer hdf5_writer(comm, dm, hdf5viewer);
+    PetscCall(hdf5_writer.write_airy_wave(wave));
+    PetscCall(hdf5_writer.write_domain(options.xmin, options.xmax,
+                                       options.xmin + options.nin * wave.wavelength(),
+                                       options.xmax - options.nout * wave.wavelength()));
+
+    PetscCall(hdf5_writer.write_simulation(options.sim_start_time, options.sim_end_time,
+                                           options.sim_dt, num_steps));
 
     PetscCall(hdf5_writer.push_group());
-    PetscCall(hdf5_writer.write(wave));
-
     for (PetscInt step = 0; step <= num_steps; ++step)
     {
         const PetscReal time = options.sim_start_time + step * options.sim_dt;

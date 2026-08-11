@@ -262,9 +262,10 @@ PetscErrorCode run()
     PetscViewer hdf5viewer = nullptr;
     PetscCall(PetscViewerHDF5Open(comm, options.output, FILE_MODE_WRITE, &hdf5viewer));
     wavein::DMStagHDF5Writer hdf5_writer(comm, dm, hdf5viewer);
+    PetscCall(hdf5_writer.write_airy_wave(wave));
+    PetscCall(hdf5_writer.write_domain(xmin, xmax, xmin, xmax));
 
     PetscCall(hdf5_writer.push_group());
-    PetscCall(hdf5_writer.write(wave));
 
     // Write the initial conditions to the HDF5 file
     PetscCall(hdf5_writer.write_solution(sol, tt, "velocities and pressure"));
@@ -288,6 +289,8 @@ PetscErrorCode run()
     PetscCall(hdf5_writer.write_surface_elevation(eta, tt));
 
     PetscCall(hdf5_writer.pop_group());
+
+    PetscCall(hdf5_writer.write_simulation(0.0, duration, dt, num_steps));
 
     // After the simulation, eta and velocities should recover the initial conditions
     Vec velocity_error = nullptr, surface_elevation_error = nullptr;
