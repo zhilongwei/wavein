@@ -7,7 +7,9 @@
 #include <petscdmstag.h>
 #include <petscviewerhdf5.h>
 
-const char help[] = "Simulate a regular wave tank using the forcing zone method.\n";
+const char help[] =
+    "Simulate a regular wave tank using direct inlet generation and source-term outlet "
+    "absorption.\n";
 
 namespace
 {
@@ -41,8 +43,8 @@ struct WaveTankOptions
         PetscInt Nz = 0;
 
         // Wavemaker parameters
-        PetscReal nin = 0.0;
-        PetscReal nout = 0.0;
+        PetscReal nin = 1.0;
+        PetscReal nout = 2.0;
         PetscReal gamma = 0.0;
         PetscReal ramp_up_time = 0.0;
 };
@@ -83,8 +85,6 @@ PetscErrorCode read_wave_tank_options(WaveTankOptions *options, PetscBool *shoul
     PetscBool xmax_set = PETSC_FALSE;
     PetscBool Nx_set = PETSC_FALSE;
     PetscBool Nz_set = PETSC_FALSE;
-    PetscBool nin_set = PETSC_FALSE;
-    PetscBool nout_set = PETSC_FALSE;
     PetscBool gamma_set = PETSC_FALSE;
     PetscBool ramp_up_time_set = PETSC_FALSE;
 
@@ -138,10 +138,10 @@ PetscErrorCode read_wave_tank_options(WaveTankOptions *options, PetscBool *shoul
                               &options->Nz, &Nz_set));
 
     PetscCall(PetscOptionsReal("-nin", "Inlet forcing-zone length in wavelengths", nullptr,
-                               options->nin, &options->nin, &nin_set));
+                               options->nin, &options->nin, nullptr));
     PetscCall(PetscOptionsReal("-nout", "Outlet forcing-zone length in wavelengths", nullptr,
-                               options->nout, &options->nout, &nout_set));
-    PetscCall(PetscOptionsReal("-gamma", "Forcing-zone strength", nullptr, options->gamma,
+                               options->nout, &options->nout, nullptr));
+    PetscCall(PetscOptionsReal("-gamma", "Outlet source-relaxation rate", nullptr, options->gamma,
                                &options->gamma, &gamma_set));
     PetscCall(PetscOptionsReal("-ramp_up_time", "Wavemaker ramp-up time", nullptr,
                                options->ramp_up_time, &options->ramp_up_time, &ramp_up_time_set));
@@ -179,8 +179,6 @@ PetscErrorCode read_wave_tank_options(WaveTankOptions *options, PetscBool *shoul
     PetscCheck(xmax_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "Missing required option -xmax");
     PetscCheck(Nx_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "Missing required option -nx");
     PetscCheck(Nz_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "Missing required option -nz");
-    PetscCheck(nin_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "Missing required option -nin");
-    PetscCheck(nout_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "Missing required option -nout");
     PetscCheck(gamma_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "Missing required option -gamma");
     PetscCheck(ramp_up_time_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
                "Missing required option -ramp_up_time");
@@ -232,7 +230,7 @@ PetscErrorCode read_wave_tank_options(WaveTankOptions *options, PetscBool *shoul
     PetscCheck(options->nout > 0.0, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
                "Outlet forcing-zone length -nout must be positive");
     PetscCheck(options->gamma > 0.0, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
-               "Forcing-zone strength -gamma must be positive");
+               "Outlet source-relaxation rate -gamma must be positive");
     PetscCheck(options->ramp_up_time > 0.0, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
                "Wavemaker ramp-up time -ramp_up_time must be positive");
 
@@ -361,9 +359,9 @@ PetscErrorCode run()
             break;
         }
 
-        const PetscReal factor =
+        const PetscReal ramp =
             PetscMin(1.0, (time - options.sim_start_time) / options.ramp_up_time);
-        PetscCall(wave_tank.update(sol, eta, time, options.sim_dt, factor));
+        PetscCall(wave_tank.update(sol, eta, time, options.sim_dt, ramp));
     }
 
     PetscCall(hdf5_writer.pop_group());
@@ -424,9 +422,9 @@ int main(int argc, char **argv)
 //   -nz                Number of cells over the water depth.
 //
 // Wavemaker options:
-//   -nin               Inlet forcing-zone length measured in wavelengths.
-//   -nout              Outlet forcing-zone length measured in wavelengths.
-//   -gamma             Forcing-zone relaxation rate in 1/s.
+//   -nin               Inlet forcing-zone length in wavelengths; default: 1.
+//   -nout              Outlet forcing-zone length in wavelengths; default: 2.
+//   -gamma             Outlet source-relaxation rate in 1/s.
 //   -ramp_up_time      Duration of the linear wavemaker ramp in seconds.
 //
 // By convention, the physical wave tank starts at x=0 and ends at x=Ltank. The forcing zones
@@ -438,12 +436,12 @@ int main(int argc, char **argv)
 // [Ltank, Ltank+nout*L].
 //
 // For T=1.5 s, h=0.7 m, and H=0.07 m, the finite-depth Airy wavelength is
-// L=3.1173251893 m. A seven-wavelength physical tank with nin=nout=1 and 40 cells per
+// L=3.1173251893 m. A seven-wavelength physical tank with nin=1, nout=2, and 40 cells per
 // wavelength therefore uses:
 //   Ltank = 7*L = 21.8212763248 m
 //   xmin = -L = -3.1173251893 m
-//   xmax = Ltank+L = 8*L = 24.9386015141 m
-//   nx = (7+1+1)*40 = 360
+//   xmax = Ltank+2*L = 9*L = 28.0559267037 m
+//   nx = (7+1+2)*40 = 400
 //   nz = 20
 //
 // Simulation and output times are conveniently defined using the wave period. The target case
@@ -459,8 +457,8 @@ int main(int argc, char **argv)
 //       -flow_surface_elevation_output_start_time 9.0 \
 //       -flow_surface_elevation_output_end_time 10.5 -flow_output_interval 0.075 \
 //       -wave_height 0.07 -wave_period 1.5 -water_depth 0.7 \
-//       -xmin -3.1173251893 -xmax 24.9386015141 -nx 360 -nz 20 \
-//       -nin 1.0 -nout 1.0 -gamma 6.68 -ramp_up_time 1.5 \
+//       -xmin -3.1173251893 -xmax 28.0559267037 -nx 400 -nz 20 \
+//       -gamma 6.68 -ramp_up_time 1.5 \
 //       -output regular_wave_tank.h5
 //
 // Run the same case on four MPI ranks:
@@ -470,6 +468,6 @@ int main(int argc, char **argv)
 //       -flow_surface_elevation_output_start_time 9.0 \
 //       -flow_surface_elevation_output_end_time 10.5 -flow_output_interval 0.075 \
 //       -wave_height 0.07 -wave_period 1.5 -water_depth 0.7 \
-//       -xmin -3.1173251893 -xmax 24.9386015141 -nx 360 -nz 20 \
-//       -nin 1.0 -nout 1.0 -gamma 6.68 -ramp_up_time 1.5 \
+//       -xmin -3.1173251893 -xmax 28.0559267037 -nx 400 -nz 20 \
+//       -gamma 6.68 -ramp_up_time 1.5 \
 //       -output regular_wave_tank_mpi.h5

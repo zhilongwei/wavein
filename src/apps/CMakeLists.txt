@@ -37,11 +37,9 @@ if(BUILD_TESTING)
             -wave_period 1.50
             -water_depth 0.70
             -xmin -3.1173251893
-            -xmax 24.9386015141
-            -nx 360
+            -xmax 28.0559267037
+            -nx 400
             -nz 20
-            -nin 1
-            -nout 1
             -gamma 6.68
             -ramp_up_time 1.5
             -output regular_wave_tank_smoke.h5
