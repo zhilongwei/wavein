@@ -17,6 +17,11 @@ struct ForcingZoneGeometry
         {
             return x >= xmin && x <= xmin + inlet_length;
         }
+
+        [[nodiscard]] PetscBool is_in_outlet_forcing_zone(PetscReal x) const noexcept
+        {
+            return x >= xmax - outlet_length && x <= xmax;
+        }
 };
 
 class Wavemaker
@@ -36,7 +41,7 @@ class Wavemaker
             return geometry_;
         }
 
-        PetscErrorCode force(Vec ref_vel, Vec ref_eta, PetscReal dt, PetscReal factor, Vec vel,
+        PetscErrorCode force(Vec ref_vel, Vec ref_eta, PetscReal dt, PetscReal ramp, Vec vel,
                              Vec eta) noexcept;
 
     private:
@@ -46,7 +51,9 @@ class Wavemaker
         }
         MPI_Comm comm_ = MPI_COMM_NULL;
         ForcingZoneGeometry geometry_;
-        Vec blender_ = nullptr;
+        PetscReal gamma_ = 0.0; // Outlet source-relaxation rate in 1/s.
+        Vec inlet_blender_ = nullptr;
+        Vec outlet_blender_ = nullptr;
         Vec delta_vel_ = nullptr;
         Vec delta_eta_ = nullptr;
 };
