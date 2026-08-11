@@ -27,10 +27,9 @@ class WaveTank
             destroy();
         }
 
-        PetscErrorCode update(Vec sol, Vec eta, PetscReal t, PetscReal dt,
-                              PetscReal factor) noexcept;
+        PetscErrorCode update(Vec sol, Vec eta, PetscReal t, PetscReal dt, PetscReal ramp) noexcept;
         PetscErrorCode update(Vec sol, Vec eta, Vec source, PetscReal t, PetscReal dt,
-                              PetscReal factor) noexcept;
+                              PetscReal ramp) noexcept;
 
     private:
         WaveTank(MPI_Comm comm, DM dm, std::vector<WaveComponent> components, PetscReal water_depth,

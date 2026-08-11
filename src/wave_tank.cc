@@ -281,14 +281,14 @@ PetscErrorCode WaveTank::synthesize_reference_fields(PetscReal t) noexcept
 }
 
 PetscErrorCode WaveTank::update(Vec sol, Vec eta, Vec source, PetscReal t, PetscReal dt,
-                                PetscReal factor) noexcept
+                                PetscReal ramp) noexcept
 {
     PetscFunctionBeginUser;
 
     if (xboundary_ == DM_BOUNDARY_NONE)
     {
         PetscCall(synthesize_reference_fields(t));
-        PetscCall(wavemaker_.force(ref_sol_, ref_eta_, dt, factor, sol, eta));
+        PetscCall(wavemaker_.force(ref_sol_, ref_eta_, dt, ramp, sol, eta));
     }
 
     PetscCall(MatMult(mat_extract_top_w_, sol, top_w_));
@@ -307,11 +307,11 @@ PetscErrorCode WaveTank::update(Vec sol, Vec eta, Vec source, PetscReal t, Petsc
 }
 
 PetscErrorCode WaveTank::update(Vec sol, Vec eta, PetscReal t, PetscReal dt,
-                                PetscReal factor) noexcept
+                                PetscReal ramp) noexcept
 {
     PetscFunctionBeginUser;
 
-    PetscCall(update(sol, eta, nullptr, t, dt, factor));
+    PetscCall(update(sol, eta, nullptr, t, dt, ramp));
 
     PetscFunctionReturn(PETSC_SUCCESS);
 }
