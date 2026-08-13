@@ -8,8 +8,6 @@
 #include <petscdmstag.h>
 #include <petscviewerhdf5.h>
 
-#include <limits>
-
 const char help[] = "Simulate a periodic wave tank to check the algorithm convergence rate.\n";
 
 namespace
@@ -240,8 +238,6 @@ PetscErrorCode run()
 
     const PetscReal duration = options.wave.T;
     const PetscReal requested_num_steps = PetscCeilReal(duration / options.dt);
-    PetscCheck(requested_num_steps <= static_cast<PetscReal>(std::numeric_limits<PetscInt>::max()),
-               comm, PETSC_ERR_USER_INPUT, "Time-step size -dt is too small");
     const auto num_steps = static_cast<PetscInt>(requested_num_steps);
     const PetscReal dt = duration / static_cast<PetscReal>(num_steps);
 
