@@ -1,0 +1,116 @@
+name: C++ tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  repository_dispatch:
+    types: [petsc-image-published]
+  schedule:
+    # The image repository checks for PETSc releases on Monday. Leave enough
+    # time for both image variants to build before testing them here.
+    - cron: "43 4 * * 2"
+  workflow_dispatch:
+    inputs:
+      petsc_version:
+        description: Image version and revision, for example 3.25.4-r2 (latest if empty)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cpp-tests-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  resolve-image:
+    name: Resolve PETSc image
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      image_base: ${{ steps.image.outputs.image_base }}
+      variants: ${{ steps.image.outputs.variants }}
+    steps:
+      - name: Find the newest complete image release
+        id: image
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_VERSION: ${{ github.event.client_payload.petsc_version }}
+          MANUAL_VERSION: ${{ inputs.petsc_version }}
+          PACKAGE: ghcr.io/zhilongwei/wavein-petsc
+        run: |
+          set -euo pipefail
+
+          token_response="$(curl --fail --silent --show-error --retry 4 \
+            'https://ghcr.io/token?scope=repository:zhilongwei/wavein-petsc:pull')"
+          token="$(jq -er '.token' <<<"${token_response}")"
+          tags_response="$(curl --fail --silent --show-error --retry 4 \
+            --header "Authorization: Bearer ${token}" \
+            'https://ghcr.io/v2/zhilongwei/wavein-petsc/tags/list?n=1000')"
+
+          version="${DISPATCH_VERSION:-${MANUAL_VERSION:-}}"
+          if [[ -z "${version}" ]]; then
+            release_tag="$(
+              jq -r '
+                .tags[]
+                | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+-r[1-9][0-9]*-release$"))
+              ' <<<"${tags_response}" \
+                | sort -V \
+                | tail -n 1
+            )"
+            [[ -n "${release_tag}" ]]
+            version="${release_tag%-release}"
+          fi
+
+          [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-r[1-9][0-9]*$ ]]
+          jq -e \
+            --arg debug "${version}-debug" \
+            --arg release "${version}-release" '
+              ((.tags | index($debug)) != null)
+              and ((.tags | index($release)) != null)
+            ' <<<"${tags_response}" >/dev/null
+
+          variants='["debug"]'
+          if [[ "${EVENT_NAME}" == "repository_dispatch" \
+            || "${EVENT_NAME}" == "schedule" \
+            || "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            variants='["debug","release"]'
+          fi
+
+          echo "image_base=${PACKAGE}:${version}" >>"${GITHUB_OUTPUT}"
+          echo "variants=${variants}" >>"${GITHUB_OUTPUT}"
+          echo "Testing PETSc image release \`${PACKAGE}:${version}\`." >>"${GITHUB_STEP_SUMMARY}"
+
+  test:
+    name: PETSc ${{ matrix.variant }}
+    needs: resolve-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: ${{ fromJSON(needs.resolve-image.outputs.variants) }}
+    container:
+      image: ${{ format('{0}-{1}', needs.resolve-image.outputs.image_base, matrix.variant) }}
+      options: --user 0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Install test dependency
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends catch2
+          rm -rf /var/lib/apt/lists/*
+
+      - name: Configure
+        run: cmake --preset dev -DWAVEIN_ENABLE_CLANG_TIDY=OFF
+
+      - name: Build
+        run: cmake --build --preset dev --parallel 2
+
+      - name: Test
+        run: ctest --preset dev
