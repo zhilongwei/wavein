@@ -1,3 +1,4 @@
+#include "wave_tank_options.h"
 #include "wavein/airy_wave.h"
 #include "wavein/dmstag_hdf5_writer.h"
 #include "wavein/projection.h"
@@ -16,12 +17,9 @@ namespace
 
 struct WaveTankOptions
 {
-        PetscReal H = 0.0;
-        PetscReal T = 0.0;
-        PetscReal h = 0.0;
+        wavein::app::AiryWaveOptions wave;
+        wavein::app::WaveTankGridOptions grid;
         PetscReal dt = 0.0;
-        PetscInt Nx = 0;
-        PetscInt Nz = 0;
         char output[PETSC_MAX_PATH_LEN] = "output.h5";
 };
 
@@ -29,29 +27,17 @@ PetscErrorCode read_wave_tank_options(WaveTankOptions *options, PetscBool *shoul
 {
     PetscFunctionBeginUser;
 
-    PetscBool H_set = PETSC_FALSE;
-    PetscBool T_set = PETSC_FALSE;
-    PetscBool h_set = PETSC_FALSE;
     PetscBool dt_set = PETSC_FALSE;
-    PetscBool Nx_set = PETSC_FALSE;
-    PetscBool Nz_set = PETSC_FALSE;
 
     PetscOptionsBegin(PETSC_COMM_WORLD, nullptr, "Periodic wave tank options", nullptr);
     PetscCall(
-        PetscOptionsReal("-wave_height", "Wave height", nullptr, options->H, &options->H, &H_set));
-    PetscCall(
-        PetscOptionsReal("-wave_period", "Wave period", nullptr, options->T, &options->T, &T_set));
-    PetscCall(
-        PetscOptionsReal("-water_depth", "Water depth", nullptr, options->h, &options->h, &h_set));
-    PetscCall(
         PetscOptionsReal("-dt", "Time-step size", nullptr, options->dt, &options->dt, &dt_set));
-    PetscCall(PetscOptionsInt("-nx", "Number of cells in the x-direction", nullptr, options->Nx,
-                              &options->Nx, &Nx_set));
-    PetscCall(PetscOptionsInt("-nz", "Number of cells in the z-direction", nullptr, options->Nz,
-                              &options->Nz, &Nz_set));
     PetscCall(PetscOptionsString("-output", "HDF5 output filename", nullptr, options->output,
                                  options->output, sizeof(options->output), nullptr));
     PetscOptionsEnd();
+
+    PetscCall(wavein::app::read_airy_wave_options(PETSC_COMM_WORLD, options->wave));
+    PetscCall(wavein::app::read_wave_tank_grid_options(PETSC_COMM_WORLD, options->grid));
 
     PetscCall(PetscOptionsHasHelp(nullptr, should_exit));
     if (*should_exit)
@@ -59,28 +45,9 @@ PetscErrorCode read_wave_tank_options(WaveTankOptions *options, PetscBool *shoul
         PetscFunctionReturn(PETSC_SUCCESS);
     }
 
-    PetscCheck(H_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
-               "Missing required option -wave_height");
-    PetscCheck(T_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
-               "Missing required option -wave_period");
-    PetscCheck(h_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
-               "Missing required option -water_depth");
     PetscCheck(dt_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "Missing required option -dt");
-    PetscCheck(Nx_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "Missing required option -nx");
-    PetscCheck(Nz_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "Missing required option -nz");
-
-    PetscCheck(options->H > 0.0, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
-               "Wave height -wave_height must be positive");
-    PetscCheck(options->T > 0.0, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
-               "Wave period -wave_period must be positive");
-    PetscCheck(options->h > 0.0, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
-               "Water depth -water_depth must be positive");
-    PetscCheck(options->dt > 0.0, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
-               "Time-step size -dt must be positive");
-    PetscCheck(options->Nx >= 2, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
-               "Cell count -nx must be at least 2");
-    PetscCheck(options->Nz >= 2, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
-               "Cell count -nz must be at least 2");
+    PetscCheck(options->dt > 0.0 && !PetscIsInfOrNanReal(options->dt), PETSC_COMM_WORLD,
+               PETSC_ERR_USER_INPUT, "Time-step size -dt must be positive");
 
     PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -215,25 +182,25 @@ PetscErrorCode run()
     }
 
     MPI_Comm comm = PETSC_COMM_WORLD;
-    wavein::AiryWave wave(comm, options.h, options.T, options.H);
+    wavein::AiryWave wave(comm, options.wave.h, options.wave.T, options.wave.H);
 
     const PetscReal L = wave.wavelength();
     DM dm = nullptr;
     const PetscInt dof0 = 0, dof1 = 1, dof2 = 1;
     const PetscInt stencil_width = 1;
-    PetscCall(DMStagCreate2d(PETSC_COMM_WORLD, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_NONE, options.Nx,
-                             options.Nz, PETSC_DECIDE, PETSC_DECIDE, dof0, dof1, dof2,
-                             DMSTAG_STENCIL_BOX, stencil_width, nullptr, nullptr, &dm));
+    PetscCall(DMStagCreate2d(PETSC_COMM_WORLD, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_NONE,
+                             options.grid.Nx, options.grid.Nz, PETSC_DECIDE, PETSC_DECIDE, dof0,
+                             dof1, dof2, DMSTAG_STENCIL_BOX, stencil_width, nullptr, nullptr, &dm));
     PetscCall(DMSetFromOptions(dm));
     PetscCall(DMSetUp(dm));
 
     PetscInt ndim[2];
     PetscCall(DMStagGetGlobalSizes(dm, &ndim[0], &ndim[1], nullptr));
     const PetscReal dx = L / static_cast<PetscReal>(ndim[0]);
-    const PetscReal dz = options.h / static_cast<PetscReal>(ndim[1]);
+    const PetscReal dz = options.wave.h / static_cast<PetscReal>(ndim[1]);
 
     const PetscReal xmin = 0.0, xmax = L;
-    const PetscReal zmin = -options.h, zmax = 0.0;
+    const PetscReal zmin = -options.wave.h, zmax = 0.0;
     PetscCall(DMStagSetUniformCoordinatesProduct(dm, xmin, xmax, zmin, zmax, 0.0, 0.0));
 
     const PetscReal nin = 0.1, nout = 0.1, gamma = 1.0;
@@ -271,7 +238,7 @@ PetscErrorCode run()
     PetscCall(hdf5_writer.write_solution(sol, tt, "velocities and pressure"));
     PetscCall(hdf5_writer.write_surface_elevation(eta, tt, "surface elevation"));
 
-    const PetscReal duration = options.T;
+    const PetscReal duration = options.wave.T;
     const PetscReal requested_num_steps = PetscCeilReal(duration / options.dt);
     PetscCheck(requested_num_steps <= static_cast<PetscReal>(std::numeric_limits<PetscInt>::max()),
                comm, PETSC_ERR_USER_INPUT, "Time-step size -dt is too small");

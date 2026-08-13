@@ -1,0 +1,80 @@
+#pragma once
+
+#include <petscsys.h>
+
+namespace wavein::app
+{
+
+struct SimulationOptions
+{
+        PetscReal start_time = 0.0;
+        PetscReal end_time = 0.0;
+        PetscReal dt = 0.0;
+};
+
+struct WaveTankOutputOptions
+{
+        char output_file[PETSC_MAX_PATH_LEN] = "output.h5";
+        PetscReal flow_field_output_start_time = 0.0;
+        PetscReal flow_field_output_end_time = 0.0;
+        PetscReal flow_surface_elevation_output_start_time = 0.0;
+        PetscReal flow_surface_elevation_output_end_time = 0.0;
+        PetscReal flow_output_interval = 0.0;
+};
+
+struct AiryWaveOptions
+{
+        PetscReal H = 0.0;
+        PetscReal T = 0.0;
+        PetscReal h = 0.0;
+};
+
+struct IrregularWaveOptions
+{
+        PetscReal Hs = 0.0;
+        PetscReal Tp = 0.0;
+        PetscReal gamma = 3.3;
+        PetscReal h = 0.0;
+        PetscReal omega_min = 0.0;
+        PetscReal omega_max = 0.0;
+        PetscInt component_count = 0;
+        unsigned long random_seed = 0;
+};
+
+struct WaveTankDomainOptions
+{
+        PetscReal xmin = 0.0;
+        PetscReal xmax = 0.0;
+};
+
+struct WaveTankGridOptions
+{
+        PetscInt Nx = 0;
+        PetscInt Nz = 0;
+};
+
+struct WaveTankWavemakerOptions
+{
+        PetscReal nin = 1.0;
+        PetscReal nout = 2.0;
+        PetscReal gamma = 0.0;
+        PetscReal ramp_up_time = 0.0;
+};
+
+// These functions read the default PETSc options database populated by PetscInitialize().
+// Each reader returns without enforcing required options when PETSc help was requested, allowing
+// an application to call every reader and display all of its option sections.
+PetscErrorCode read_simulation_options(MPI_Comm comm, SimulationOptions &options);
+PetscErrorCode read_wave_tank_output_options(MPI_Comm comm, WaveTankOutputOptions &options);
+PetscErrorCode read_airy_wave_options(MPI_Comm comm, AiryWaveOptions &options);
+PetscErrorCode read_irregular_wave_options(MPI_Comm comm, IrregularWaveOptions &options);
+PetscErrorCode read_wave_tank_domain_options(MPI_Comm comm, WaveTankDomainOptions &options);
+PetscErrorCode read_wave_tank_grid_options(MPI_Comm comm, WaveTankGridOptions &options);
+PetscErrorCode read_wave_tank_wavemaker_options(MPI_Comm comm, WaveTankWavemakerOptions &options);
+
+// Output-window bounds depend on the simulation interval, so they are validated after both groups
+// have been read.
+PetscErrorCode validate_wave_tank_output_options(MPI_Comm comm, const SimulationOptions &simulation,
+                                                 const WaveTankOutputOptions &output);
+
+} // namespace wavein::app

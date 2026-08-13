@@ -1,11 +1,15 @@
 add_executable(wavein main.cc)
 target_link_libraries(wavein PRIVATE wavein_core)
 
+add_library(wave_tank_app_support wave_tank_options.cc wave_tank_setup.cc)
+target_include_directories(wave_tank_app_support PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(wave_tank_app_support PUBLIC wavein_core)
+
 add_executable(periodic_wave_tank periodic_wave_tank.cc)
-target_link_libraries(periodic_wave_tank PRIVATE wavein_core)
+target_link_libraries(periodic_wave_tank PRIVATE wave_tank_app_support)
 
 add_executable(regular_wave_tank regular_wave_tank.cc)
-target_link_libraries(regular_wave_tank PRIVATE wavein_core)
+target_link_libraries(regular_wave_tank PRIVATE wave_tank_app_support)
 
 if(BUILD_TESTING)
     add_test(
