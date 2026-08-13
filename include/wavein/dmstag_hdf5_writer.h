@@ -3,6 +3,7 @@
 #include <petscdmstag.h>
 
 #include "wavein/airy_wave.h"
+#include "wavein/irregular_waves.h"
 
 namespace wavein
 {
@@ -27,6 +28,8 @@ class DMStagHDF5Writer
         // Writes the metadata for the AiryWave object. This includes the wave height, water depth,
         // wave period, and wavelength.
         PetscErrorCode write_airy_wave(const AiryWave &wave);
+
+        PetscErrorCode write_irregular_waves(const IrregularWaves &waves);
 
         PetscErrorCode write_domain(PetscReal xmin, PetscReal xmax, PetscReal physical_xmin,
                                     PetscReal physical_xmax);

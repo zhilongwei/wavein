@@ -289,6 +289,77 @@ PetscErrorCode DMStagHDF5Writer::write_airy_wave(const AiryWave &wave)
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+PetscErrorCode DMStagHDF5Writer::write_irregular_waves(const IrregularWaves &waves)
+{
+    PetscFunctionBeginUser;
+
+    PetscCall(PetscViewerHDF5PushGroup(viewer_, kWaveGroup));
+
+    const char wave_type[] = "irregular";
+    PetscCall(PetscViewerHDF5WriteAttribute(viewer_, nullptr, "type", PETSC_STRING, wave_type));
+
+    PetscReal value = waves.water_depth();
+    PetscCall(PetscViewerHDF5WriteAttribute(viewer_, nullptr, "depth", PETSC_REAL, &value));
+    value = waves.wavelength_at_peak_period();
+    PetscCall(PetscViewerHDF5WriteAttribute(viewer_, nullptr, "wavelength_at_peak_period",
+                                            PETSC_REAL, &value));
+
+    const std::vector<WaveComponent> &components = waves.components();
+    const auto component_count = static_cast<PetscInt>(components.size());
+    PetscCall(PetscViewerHDF5WriteAttribute(viewer_, nullptr, "component_count", PETSC_INT,
+                                            &component_count));
+
+    Vec omega = nullptr;
+    Vec amplitude = nullptr;
+    Vec phase = nullptr;
+
+    PetscCall(VecCreateMPI(comm_, PETSC_DECIDE, component_count, &omega));
+    PetscCall(VecDuplicate(omega, &amplitude));
+    PetscCall(VecDuplicate(omega, &phase));
+
+    PetscCall(PetscObjectSetName(reinterpret_cast<PetscObject>(omega), "omega"));
+    PetscCall(PetscObjectSetName(reinterpret_cast<PetscObject>(amplitude), "amplitude"));
+    PetscCall(PetscObjectSetName(reinterpret_cast<PetscObject>(phase), "phase"));
+
+    PetscInt ownership_start;
+    PetscInt ownership_end;
+    PetscCall(VecGetOwnershipRange(omega, &ownership_start, &ownership_end));
+
+    PetscScalar *omega_values = nullptr;
+    PetscScalar *amplitude_values = nullptr;
+    PetscScalar *phase_values = nullptr;
+
+    PetscCall(VecGetArray(omega, &omega_values));
+    PetscCall(VecGetArray(amplitude, &amplitude_values));
+    PetscCall(VecGetArray(phase, &phase_values));
+
+    for (PetscInt component = ownership_start; component != ownership_end; ++component)
+    {
+        const PetscInt local_component = component - ownership_start;
+        const WaveComponent &wave_component = components[static_cast<std::size_t>(component)];
+
+        omega_values[local_component] = wave_component.omega;
+        amplitude_values[local_component] = wave_component.amplitude;
+        phase_values[local_component] = wave_component.phase;
+    }
+
+    PetscCall(VecRestoreArray(phase, &phase_values));
+    PetscCall(VecRestoreArray(amplitude, &amplitude_values));
+    PetscCall(VecRestoreArray(omega, &omega_values));
+
+    PetscCall(VecView(omega, viewer_));
+    PetscCall(VecView(amplitude, viewer_));
+    PetscCall(VecView(phase, viewer_));
+
+    PetscCall(VecDestroy(&phase));
+    PetscCall(VecDestroy(&amplitude));
+    PetscCall(VecDestroy(&omega));
+
+    PetscCall(PetscViewerHDF5PopGroup(viewer_));
+
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 PetscErrorCode DMStagHDF5Writer::write_domain(PetscReal xmin, PetscReal xmax,
                                               PetscReal physical_xmin, PetscReal physical_xmax)

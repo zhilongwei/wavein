@@ -21,10 +21,7 @@ class IrregularWaves
     public:
         IrregularWaves() = delete;
 
-        IrregularWaves(MPI_Comm comm, const WaveSpectrum &spectrum, PetscReal h)
-            : comm_(comm), spectrum_(spectrum), h_(h)
-        {
-        }
+        IrregularWaves(MPI_Comm comm, const WaveSpectrum &spectrum, PetscReal h);
 
         IrregularWaves(MPI_Comm comm, const WaveSpectrum &spectrum, PetscReal h,
                        PetscReal omega_min, PetscReal omega_max, PetscInt component_count,
@@ -46,6 +43,11 @@ class IrregularWaves
             return h_;
         }
 
+        [[nodiscard]] PetscReal wavelength_at_peak_period() const
+        {
+            return wavelength_at_peak_period_;
+        }
+
         [[nodiscard]] const std::vector<WaveComponent> &components() const noexcept
         {
             return components_;
@@ -55,6 +57,7 @@ class IrregularWaves
         const MPI_Comm comm_;          // MPI communicator
         const WaveSpectrum &spectrum_; // reference to wave spectrum
         const PetscReal h_;            // water depth
+        const PetscReal wavelength_at_peak_period_; // wavelength at peak period
         std::vector<WaveComponent> components_;
 };
 

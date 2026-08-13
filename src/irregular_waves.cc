@@ -6,11 +6,17 @@
 namespace wavein
 {
 
+IrregularWaves::IrregularWaves(MPI_Comm comm, const WaveSpectrum &spectrum, PetscReal h)
+    : comm_(comm), spectrum_(spectrum), h_(h),
+      wavelength_at_peak_period_(AiryWave(comm_, h_, spectrum_.peak_period()).wavelength())
+{
+}
+
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
 IrregularWaves::IrregularWaves(MPI_Comm comm, const WaveSpectrum &spectrum, PetscReal h,
                                PetscReal omega_min, PetscReal omega_max, PetscInt component_count,
                                unsigned long random_seed)
-    : comm_(comm), spectrum_(spectrum), h_(h)
+    : IrregularWaves(comm, spectrum, h)
 {
     PetscFunctionBeginUser;
 
