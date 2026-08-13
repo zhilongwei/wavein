@@ -43,9 +43,6 @@ PetscErrorCode read_wave_tank_options(WaveTankOptions *options, PetscBool *shoul
         PetscFunctionReturn(PETSC_SUCCESS);
     }
 
-    PetscCall(wavein::app::validate_wave_tank_output_options(PETSC_COMM_WORLD, options->simulation,
-                                                             options->output));
-
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -62,9 +59,8 @@ PetscErrorCode run()
     }
 
     MPI_Comm comm = PETSC_COMM_WORLD;
-    wavein::app::WaveTankSchedule schedule;
-    PetscCall(
-        wavein::app::create_wave_tank_schedule(comm, options.simulation, options.output, schedule));
+    const wavein::app::WaveTankSchedule schedule =
+        wavein::app::create_wave_tank_schedule(options.simulation, options.output);
 
     const PetscInt num_steps = schedule.num_steps;
     const PetscInt output_stride = schedule.output_stride;
@@ -191,6 +187,10 @@ int main(int argc, char **argv)
 // Example usage
 // -------------
 //
+// Prefer scripts/setup_wave_tank.py to validate the physical inputs and write a complete PETSc
+// YAML file, then run this app with -options_file_yaml. The explicit options below document the
+// derived app interface.
+//
 // Show the command-line options:
 //   app=./build/release/src/apps/regular_wave_tank
 //   "${app}" -help
@@ -214,8 +214,8 @@ int main(int argc, char **argv)
 //   -water_depth       Still-water depth h in metres; the vertical domain is [-h, 0].
 //
 // Domain and grid options:
-//   -xmin              Left computational boundary in metres; normally -nin*L.
-//   -xmax              Right computational boundary in metres; normally Ltank+nout*L.
+//   -xmin              Left computational boundary in metres.
+//   -xmax              Right computational boundary in metres.
 //   -nx                Total number of cells over the complete computational domain.
 //   -nz                Number of cells over the water depth.
 //
@@ -225,47 +225,44 @@ int main(int argc, char **argv)
 //   -gamma             Outlet source-relaxation rate in 1/s.
 //   -ramp_up_time      Duration of the linear wavemaker ramp in seconds.
 //
-// By convention, the physical wave tank starts at x=0 and ends at x=Ltank. The forcing zones
-// extend the computational domain beyond the physical tank:
-//   xmin = -nin*L
-//   xmax = Ltank+nout*L
+// By convention, the domain of interest starts at x=0 and ends at x=Ltank. Let bin and bout be
+// the buffer lengths separating it from the inlet and outlet forcing zones, in wavelengths. Then
+//   xmin = -(nin+bin)*L
+//   xmax = Ltank+(bout+nout)*L
 // If Ltank=NL*L and nxl cells per wavelength are required, use
-// nx=(NL+nin+nout)*nxl. The inlet forcing zone is [-nin*L, 0], and the outlet forcing zone is
-// [Ltank, Ltank+nout*L].
+// nx=(NL+nin+bin+bout+nout)*nxl. The inlet forcing zone ends at -bin*L, and the outlet forcing
+// zone starts at Ltank+bout*L.
 //
 // For T=1.5 s, h=0.7 m, and H=0.07 m, the finite-depth Airy wavelength is
-// L=3.1173251893 m. A seven-wavelength physical tank with nin=1, nout=2, and 40 cells per
-// wavelength therefore uses:
+// L=3.1173251893 m. A seven-wavelength domain of interest with nin=1, nout=2, bin=bout=1, and
+// 20 cells per wavelength therefore uses:
 //   Ltank = 7*L = 21.8212763248 m
-//   xmin = -L = -3.1173251893 m
-//   xmax = Ltank+2*L = 9*L = 28.0559267037 m
-//   nx = (7+1+2)*40 = 400
-//   nz = 20
+//   xmin = -2*L = -6.2346503785 m
+//   xmax = Ltank+3*L = 10*L = 31.1732518926 m
+//   nx = (7+1+1+1+2)*20 = 240
+//   nz = 10
 //
 // Simulation and output times are conveniently defined using the wave period. The target case
-// uses a ramp time of 1*T, a simulation duration of 7*T, dt=T/100, and an output interval of
-// T/20. The Airy phase celerity is c=L/T, so a wave travels across the seven-wavelength physical
-// tank in 7*T=10.5 s. Recording only the final period gives an output window of [6*T, 7*T], or
-// [9.0, 10.5] s.
+// uses a ramp time of 2*T, a simulation duration of 7*T, dt=T/100, and an output interval of
+// T/20. The Airy phase celerity is c=L/T, so a wave travels across the seven-wavelength domain of
+// interest in 7*T=10.5 s. The solution is recorded over [6*T, 7*T], or [9.0, 10.5] s. The
+// lighter surface-elevation output is recorded over [2*T, 7*T], or [3.0, 10.5] s.
 //
-// Run the target case on one MPI rank:
-//   "${app}" \
-//       -sim_start_time 0.0 -sim_end_time 10.5 -sim_dt 0.015 \
-//       -flow_field_output_start_time 9.0 -flow_field_output_end_time 10.5 \
-//       -flow_surface_elevation_output_start_time 9.0 \
-//       -flow_surface_elevation_output_end_time 10.5 -flow_output_interval 0.075 \
-//       -wave_height 0.07 -wave_period 1.5 -water_depth 0.7 \
-//       -xmin -3.1173251893 -xmax 28.0559267037 -nx 400 -nz 20 \
-//       -gamma 6.68 -ramp_up_time 1.5 \
-//       -output regular_wave_tank.h5
+// Generate the target case. The requested 21 m domain of interest is rounded up to 7*L. The
+// simulation lasts 7*T, the solution is recorded for the final 1*T, the surface elevation for
+// the final 5*T, and the recording rate is 20 frames/T:
+//   uv run --project scripts python scripts/setup_wave_tank.py regular \
+//       --water-depth 0.7 --wave-period 1.5 --wave-height 0.07 \
+//       --tank-length 21.0 --cells-per-wavelength 20 --cells-per-depth 10 \
+//       --inlet-buffer-wavelengths 1 --outlet-buffer-wavelengths 1 \
+//       --cfl 0.5 --simulation-periods 7 --solution-record-periods 1 \
+//       --surface-elevation-record-periods 5 --frames-per-period 20 \
+//       --outlet-relaxation-strength 10.02 \
+//       --input-file regular_wave_tank.yaml --output regular_wave_tank.h5
+//
+// Run the generated case on one MPI rank:
+//   "${app}" -options_file_yaml regular_wave_tank.yaml
 //
 // Run the same case on four MPI ranks:
-//   mpiexec -n 4 "${app}" \
-//       -sim_start_time 0.0 -sim_end_time 10.5 -sim_dt 0.015 \
-//       -flow_field_output_start_time 9.0 -flow_field_output_end_time 10.5 \
-//       -flow_surface_elevation_output_start_time 9.0 \
-//       -flow_surface_elevation_output_end_time 10.5 -flow_output_interval 0.075 \
-//       -wave_height 0.07 -wave_period 1.5 -water_depth 0.7 \
-//       -xmin -3.1173251893 -xmax 28.0559267037 -nx 400 -nz 20 \
-//       -gamma 6.68 -ramp_up_time 1.5 \
+//   mpiexec -n 4 "${app}" -options_file_yaml regular_wave_tank.yaml \
 //       -output regular_wave_tank_mpi.h5

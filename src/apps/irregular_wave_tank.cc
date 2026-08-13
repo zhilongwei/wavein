@@ -44,9 +44,6 @@ PetscErrorCode read_wave_tank_options(WaveTankOptions *options, PetscBool *shoul
         PetscFunctionReturn(PETSC_SUCCESS);
     }
 
-    PetscCall(wavein::app::validate_wave_tank_output_options(PETSC_COMM_WORLD, options->simulation,
-                                                             options->output));
-
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -63,9 +60,8 @@ PetscErrorCode run()
     }
 
     MPI_Comm comm = PETSC_COMM_WORLD;
-    wavein::app::WaveTankSchedule schedule;
-    PetscCall(
-        wavein::app::create_wave_tank_schedule(comm, options.simulation, options.output, schedule));
+    const wavein::app::WaveTankSchedule schedule =
+        wavein::app::create_wave_tank_schedule(options.simulation, options.output);
 
     const PetscInt num_steps = schedule.num_steps;
     const PetscInt output_stride = schedule.output_stride;
@@ -196,6 +192,10 @@ int main(int argc, char **argv)
 // Example usage
 // -------------
 //
+// Prefer scripts/setup_wave_tank.py to validate the physical inputs and write a complete PETSc
+// YAML file, then run this app with -options_file_yaml. The explicit options below document the
+// derived app interface.
+//
 // Show the command-line options:
 //   app=./build/release/src/apps/irregular_wave_tank
 //   "${app}" -help
@@ -224,8 +224,8 @@ int main(int argc, char **argv)
 //   -random_seed                 Seed for the random component phases; default: 0.
 //
 // Domain and grid options:
-//   -xmin              Left computational boundary in metres; normally -nin*Lp.
-//   -xmax              Right computational boundary in metres; normally Ltank+nout*Lp.
+//   -xmin              Left computational boundary in metres.
+//   -xmax              Right computational boundary in metres.
 //   -nx                Total number of cells over the complete computational domain.
 //   -nz                Number of cells over the water depth.
 //
@@ -241,40 +241,30 @@ int main(int argc, char **argv)
 //   cp = Lp/Tp = 9.6160722206 m/s
 // The frequency interval uses Tz=0.834*Tp and [omega_min,omega_max]=[1/Tz,20/Tz].
 //
-// The eight-wavelength computational domain has a one-wavelength inlet zone, a
-// five-wavelength physical tank, and a two-wavelength outlet zone. Using 20 cells per peak
-// wavelength gives nx=8*20=160. With nz=10, dx=Lp/20=7.3274470321 m and dz=1 m, so dz controls
-// the CFL time step:
+// A requested domain length of interest of 700 m is rounded upward to 5*Lp=732.7447032119 m. With
+// a one-wavelength buffer on each side, a one-wavelength inlet zone, and a two-wavelength outlet
+// zone, the complete domain is 10*Lp. Using 20 cells per peak wavelength and 10 cells per water
+// depth gives nx=200, nz=10,
+// dx=Lp/20=7.3274470321 m, and dz=h/10=1 m, so dz controls the CFL time step:
 //   dt_cfl = 0.5*min(dx,dz)/cp = 0.0519962817 s
-// Use 70920 steps and the slightly smaller time step dt=3600/70920=0.0507614213 s so that the
-// 3600 s simulation and its final 600 s output window both contain integer numbers of steps.
-// During the final 600 s, the example records the solution and eta every 30 steps, or every
-// 1.5228426396 s. This gives approximately ten output intervals per peak period.
+// The generator selects 300 steps/Tp, giving dt=Tp/300=0.0508 s. A 240*Tp simulation lasts
+// 3657.6 s. The solution is stored for the final 40*Tp, approximately 600 s, while the lighter
+// surface-elevation output is stored for the final 200*Tp. A recording rate of 10 frames/Tp gives
+// an interval of Tp/10=1.524 s and is exactly 30 time steps.
 //
-// Run the one-hour case on one MPI rank:
-//   "${app}" \
-//       -sim_start_time 0.0 -sim_end_time 3600.0 -sim_dt 0.050761421319796954 \
-//       -flow_field_output_start_time 3000.0 -flow_field_output_end_time 3600.0 \
-//       -flow_surface_elevation_output_start_time 3000.0 \
-//       -flow_surface_elevation_output_end_time 3600.0 \
-//       -flow_output_interval 1.5228426395939085 \
-//       -significant_wave_height 1.0 -peak_period 15.24 -peak_enhancement_factor 3.3 \
-//       -water_depth 10.0 -omega_min 0.07867721570774876 \
-//       -omega_max 1.5735443141549752 -component_count 100 -random_seed 20260805 \
-//       -xmin -146.54894064237143 -xmax 1025.8425844966 -nx 160 -nz 10 \
-//       -nin 1.0 -nout 2.0 -gamma 0.6561679790026247 -ramp_up_time 15.24 \
-//       -output irregular_wave_tank.h5
+// Generate the target case:
+//   uv run --project scripts python scripts/setup_wave_tank.py irregular \
+//       --water-depth 10.0 --peak-period 15.24 --significant-wave-height 1.0 \
+//       --tank-length 700 --cells-per-wavelength 20 --cells-per-depth 10 --cfl 0.5 \
+//       --inlet-buffer-wavelengths 1 --outlet-buffer-wavelengths 1 \
+//       --simulation-periods 240 --solution-record-periods 40 \
+//       --surface-elevation-record-periods 200 --frames-per-period 10 \
+//       --component-count 100 --random-seed 20260805 \
+//       --input-file irregular_wave_tank.yaml --output irregular_wave_tank.h5
+//
+// Run the generated case on one MPI rank:
+//   "${app}" -options_file_yaml irregular_wave_tank.yaml
 //
 // Run the same case on four MPI ranks:
-//   mpiexec -n 4 "${app}" \
-//       -sim_start_time 0.0 -sim_end_time 3600.0 -sim_dt 0.050761421319796954 \
-//       -flow_field_output_start_time 3000.0 -flow_field_output_end_time 3600.0 \
-//       -flow_surface_elevation_output_start_time 3000.0 \
-//       -flow_surface_elevation_output_end_time 3600.0 \
-//       -flow_output_interval 1.5228426395939085 \
-//       -significant_wave_height 1.0 -peak_period 15.24 -peak_enhancement_factor 3.3 \
-//       -water_depth 10.0 -omega_min 0.07867721570774876 \
-//       -omega_max 1.5735443141549752 -component_count 100 -random_seed 20260805 \
-//       -xmin -146.54894064237143 -xmax 1025.8425844966 -nx 160 -nz 10 \
-//       -nin 1.0 -nout 2.0 -gamma 0.6561679790026247 -ramp_up_time 15.24 \
+//   mpiexec -n 4 "${app}" -options_file_yaml irregular_wave_tank.yaml \
 //       -output irregular_wave_tank_mpi.h5

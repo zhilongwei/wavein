@@ -4,12 +4,14 @@ on:
   push:
     branches: [main]
     paths:
+      - scripts/**/*.py
       - scripts/pyproject.toml
       - scripts/uv.lock
       - .github/workflows/python-env.yml
   pull_request:
     branches: [main]
     paths:
+      - scripts/**/*.py
       - scripts/pyproject.toml
       - scripts/uv.lock
       - .github/workflows/python-env.yml
@@ -37,6 +39,9 @@ jobs:
 
       - name: Validate and sync the lockfile
         run: uv sync --project scripts --locked
+
+      - name: Test the wave-tank input generator
+        run: uv run --project scripts python -m unittest discover -s scripts/tests
 
       - name: Minimize the CI cache
         if: always()

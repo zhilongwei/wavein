@@ -46,6 +46,16 @@ PetscErrorCode read_wave_tank_options(WaveTankOptions *options, PetscBool *shoul
     PetscCheck(dt_set, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "Missing required option -dt");
     PetscCheck(options->dt > 0.0 && !PetscIsInfOrNanReal(options->dt), PETSC_COMM_WORLD,
                PETSC_ERR_USER_INPUT, "Time-step size -dt must be positive");
+    PetscCheck(options->wave.H > 0.0 && !PetscIsInfOrNanReal(options->wave.H), PETSC_COMM_WORLD,
+               PETSC_ERR_USER_INPUT, "Wave height -wave_height must be positive");
+    PetscCheck(options->wave.T > 0.0 && !PetscIsInfOrNanReal(options->wave.T), PETSC_COMM_WORLD,
+               PETSC_ERR_USER_INPUT, "Wave period -wave_period must be positive");
+    PetscCheck(options->wave.h > 0.0 && !PetscIsInfOrNanReal(options->wave.h), PETSC_COMM_WORLD,
+               PETSC_ERR_USER_INPUT, "Water depth -water_depth must be positive");
+    PetscCheck(options->grid.Nx >= 2, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
+               "Cell count -nx must be at least 2");
+    PetscCheck(options->grid.Nz >= 2, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
+               "Cell count -nz must be at least 2");
 
     PetscFunctionReturn(PETSC_SUCCESS);
 }

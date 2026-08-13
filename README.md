@@ -41,6 +41,35 @@ cmake --preset release
 cmake --build --preset release
 ```
 
+## Wave-tank input files
+
+Use `scripts/setup_wave_tank.py` to validate the primary dimensional inputs and write a PETSc YAML
+input file. Simulation and recording durations are specified in wave periods; resolution,
+forcing-zone lengths, and the buffers around the domain of interest are specified relative to the
+wavelength or water depth; and the recording rate is specified in frames per period. The requested
+domain length of interest remains dimensional and is rounded upward to a whole number of
+wavelengths. The final recording durations are set independently for the complete solution and the
+lighter surface-elevation output.
+
+For example:
+
+```bash
+uv run --project scripts python scripts/setup_wave_tank.py regular \
+    --water-depth 0.7 --wave-period 1.5 --wave-height 0.07 \
+    --tank-length 21.0 --cells-per-wavelength 20 --cells-per-depth 10 \
+    --inlet-buffer-wavelengths 1 --outlet-buffer-wavelengths 1 \
+    --cfl 0.5 --simulation-periods 7 --solution-record-periods 1 \
+    --surface-elevation-record-periods 5 \
+    --frames-per-period 20 \
+    --input-file regular.yaml --output regular_wave_tank.h5
+
+./build/release/src/apps/regular_wave_tank -options_file_yaml regular.yaml
+```
+
+Run `setup_wave_tank.py regular -h` or `setup_wave_tank.py irregular -h` for all inputs. The
+generated YAML records the derived dimensional quantities as comments and contains every PETSc
+option needed by the corresponding application.
+
 The development container still links the debug PETSc image; use the release
 PETSc image for end-to-end performance measurements.
 

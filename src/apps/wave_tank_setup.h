@@ -15,8 +15,7 @@ struct WaveTankSchedule
         PetscInt elevation_output_end_step = 0;
 };
 
-PetscErrorCode create_wave_tank_schedule(MPI_Comm comm, const SimulationOptions &simulation,
-                                         const WaveTankOutputOptions &output,
-                                         WaveTankSchedule &schedule);
+[[nodiscard]] WaveTankSchedule create_wave_tank_schedule(const SimulationOptions &simulation,
+                                                         const WaveTankOutputOptions &output);
 
 } // namespace wavein::app
